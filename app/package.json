@@ -1,5 +1,5 @@
 {
-  "name": "prediction-market-decision-making-frontend",
+  "name": "prediction-markets-frontend",
   "version": "1.0.0",
   "main": "src/index.js",
   "dependencies": {

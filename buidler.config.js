@@ -28,7 +28,7 @@ module.exports = {
     clientServePort: 3000,
     appSrcPath: 'app/',
     appBuildOutputPath: 'dist/',
-    appName: 'prediction-market-decision-making',
+    appName: 'prediction-markets',
     hooks, // Path to script hooks
   },
 }

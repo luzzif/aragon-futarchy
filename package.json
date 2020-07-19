@@ -1,5 +1,5 @@
 {
-    "name": "prediction-market-decision-making",
+    "name": "prediction-markets",
     "version": "0.0.1",
     "description": "An Aragon app to enable prediction market decision-making. Powered by Gnosis' conditional token framework.",
     "author": "Federico Luzzi <fedeluzzi00@gmail.com>",
