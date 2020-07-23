@@ -15,7 +15,7 @@
         "publish:minor": "buidler publish minor",
         "publish:patch": "buidler publish patch",
         "lint:code": "eslint .",
-        "lint:prettier": "prettier -l",
+        "lint:prettier": "prettier -l .",
         "lint:commit-message": "commitlint -e",
         "lint": "yarn lint:code && yarn lint:prettier"
     },
