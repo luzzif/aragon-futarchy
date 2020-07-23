@@ -4,7 +4,7 @@ import Aragon, { events } from "@aragon/api";
 
 const app = new Aragon();
 
-app.state(
+app.store(
     (state, action) => {
         console.log("new action", action);
         switch (action.event) {
