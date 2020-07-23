@@ -1,37 +1,32 @@
 {
-  "roles": [
-    {
-      "name": "Increment the counter",
-      "id": "INCREMENT_ROLE",
-      "params": []
+    "roles": [
+        {
+            "name": "Create a prediction market",
+            "id": "CREATE_MARKET_ROLE",
+            "params": []
+        }
+    ],
+    "environments": {
+        "default": {
+            "appName": "prediction-markets.aragonpm.eth",
+            "network": "rpc"
+        },
+        "rinkeby": {
+            "registry": "0x98df287b6c145399aaa709692c8d308357bc085d",
+            "appName": "prediction-markets.aragonpm.eth",
+            "network": "rinkeby"
+        },
+        "staging": {
+            "registry": "0xfe03625ea880a8cba336f9b5ad6e15b0a3b5a939",
+            "appName": "prediction-markets.aragonpm.eth",
+            "network": "rinkeby"
+        },
+        "mainnet": {
+            "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
+            "appName": "prediction-markets.aragonpm.eth",
+            "network": "mainnet"
+        }
     },
-    {
-      "name": "Decrement the counter",
-      "id": "DECREMENT_ROLE",
-      "params": []
-    }
-  ],
-  "environments": {
-    "default": {
-      "appName": "prediction-markets.aragonpm.eth",
-      "network": "rpc"
-    },
-    "rinkeby": {
-      "registry": "0x98df287b6c145399aaa709692c8d308357bc085d",
-      "appName": "prediction-markets.aragonpm.eth",
-      "network": "rinkeby"
-    },
-    "staging": {
-      "registry": "0xfe03625ea880a8cba336f9b5ad6e15b0a3b5a939",
-      "appName": "prediction-markets.aragonpm.eth",
-      "network": "rinkeby"
-    },
-    "mainnet": {
-      "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
-      "appName": "prediction-markets.aragonpm.eth",
-      "network": "mainnet"
-    }
-  },
-  "appName": "prediction-markets.aragonpm.eth",
-  "path": "contracts/CounterApp.sol"
+    "appName": "prediction-markets.aragonpm.eth",
+    "path": "contracts/4/PredictionMarketsApp.sol"
 }

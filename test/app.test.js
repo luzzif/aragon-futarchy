@@ -1,41 +1,56 @@
-const { assert } = require('chai')
-const { assertRevert } = require('@aragon/contract-test-helpers/assertThrow')
-const { newDao, newApp } = require('./helpers/dao')
-const { setOpenPermission } = require('./helpers/permissions')
+const { assertEvent } = require("@aragon/contract-test-helpers/assertEvent");
+const { newDao, newApp } = require("./helpers/dao");
+const { setOpenPermission } = require("./helpers/permissions");
+const { fromAscii, padRight } = require("web3-utils");
 
-const CounterApp = artifacts.require('CounterApp.sol')
+// eslint-disable-next-line no-undef
+const PredictionMarketsApp = artifacts.require("PredictionMarketsApp.sol");
+// eslint-disable-next-line no-undef
+const AppDependencies = artifacts.require("AppDependencies.sol");
 
-contract('CounterApp', ([appManager, user]) => {
-  const INIT_VALUE = 42
+// eslint-disable-next-line no-undef
+contract("PredictionMarketsApp", ([appManager, user]) => {
+    let dependencies, appBase, app;
 
-  let appBase, app
+    before("deploy base app", async () => {
+        dependencies = await AppDependencies.new();
+        appBase = await PredictionMarketsApp.new(dependencies.address);
+    });
 
-  before('deploy base app', async () => {
-    // Deploy the app's base contract.
-    appBase = await CounterApp.new(INIT_VALUE)
-  })
+    beforeEach("deploy dao and app", async () => {
+        const { dao, acl } = await newDao(appManager);
 
-  beforeEach('deploy dao and app', async () => {
-    const { dao, acl } = await newDao(appManager)
+        const proxyAddress = await newApp(
+            dao,
+            "prediction-markets",
+            appBase.address,
+            appManager
+        );
+        app = await PredictionMarketsApp.at(proxyAddress);
 
-    // Instantiate a proxy for the app, using the base contract as its logic implementation.
-    const proxyAddress = await newApp(dao, 'prediction-markets', appBase.address, appManager)
-    app = await CounterApp.at(proxyAddress)
+        await setOpenPermission(
+            acl,
+            app.address,
+            await app.CREATE_MARKET_ROLE(),
+            appManager
+        );
 
-    // Set up the app's permissions.
-    await setOpenPermission(acl, app.address, await app.INCREMENT_ROLE(), appManager)
-    await setOpenPermission(acl, app.address, await app.DECREMENT_ROLE(), appManager)
+        await app.initialize(dependencies.address);
+    });
 
-    // Initialize the app's proxy.
-    await app.initialize(INIT_VALUE)
-  })
-
-  it('should be incremented by any address', async () => {
-    await app.increment(1, { from: user })
-    assert.equal(await app.value(), INIT_VALUE + 1)
-  })
-
-  it('should not be decremented beyond 0', async () => {
-    await assertRevert(app.decrement(INIT_VALUE + 1))
-  })
-})
+    it("should guarantee a market creation to anyone", async () => {
+        const rawQuestionId = Date.now().toString();
+        const receipt = await app.createMarket(
+            user,
+            fromAscii(rawQuestionId),
+            2,
+            fromAscii("test-question"),
+            [fromAscii("test-outcome-1"), fromAscii("test-outcome-2")],
+            { from: user }
+        );
+        assertEvent(receipt, "Test", {
+            creator: user,
+            questionId: padRight(fromAscii(rawQuestionId), 64),
+        });
+    });
+});
