@@ -1,13 +1,12 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
-
 import React from "react";
 import ReactDOM from "react-dom";
 import { AragonApi } from "@aragon/api-react";
 import { App } from "./views/app";
 
 const reducer = (state) => {
-    if (state === null) {
+    if (!state) {
         return { syncing: false, markets: [] };
     }
     return state;
