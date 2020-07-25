@@ -17,6 +17,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const [outcome, setOutcome] = useState("");
     const [outcomes, setOutcomes] = useState([]);
     const [outcomeProbability, setOutcomeProbability] = useState(0);
+    const [funding, setFunding] = useState("");
 
     useEffect(() => {
         if (outcomes && outcomes.length > 0) {
@@ -37,6 +38,10 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome(event.target.value);
     }, []);
 
+    const handleFundingChange = useCallback((event) => {
+        setFunding(event.target.value);
+    }, []);
+
     const handleOutcomeAddition = useCallback(() => {
         setOutcomes([...outcomes, outcome]);
         setOutcome("");
@@ -51,14 +56,15 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setQuestion("");
         setOutcome("");
         setOutcomes([]);
+        setFunding("");
         setOutcomeProbability(0);
     };
 
     const handleCreate = useCallback(() => {
-        onCreate(question, outcomes);
+        onCreate(question, outcomes, funding);
         onClose();
         resetState();
-    }, [onClose, question, outcomes]);
+    }, [onClose, question, outcomes, funding]);
 
     const handleClose = useCallback(() => {
         onClose();
@@ -110,11 +116,21 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     }
                 />
             </Field>
+            <Field label="Initial ETH funding">
+                <TextInput
+                    type="number"
+                    wide
+                    value={funding}
+                    onChange={handleFundingChange}
+                />
+            </Field>
             <Button
                 mode="strong"
                 wide
                 label="Create"
-                disabled={!question || !outcomes || outcomes.length < 2}
+                disabled={
+                    !question || !outcomes || outcomes.length < 2 || !funding
+                }
                 onClick={handleCreate}
             />
         </SidePanel>
