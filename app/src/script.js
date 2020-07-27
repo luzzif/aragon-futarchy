@@ -1,7 +1,8 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import Aragon, { events } from "@aragon/api";
-import { hexToAscii } from "web3-utils";
+import { hexToAscii, asciiToHex, fromWei } from "web3-utils";
+import BigNumber from "bignumber.js";
 
 const app = new Aragon();
 
@@ -30,36 +31,41 @@ const eventValuesToMarket = async (event) => {
         creator,
         oracle,
         question,
-        outcomes,
+        outcomes: rawOutcomes,
         timestamp,
+        endsAt,
     } = returnValues;
-    const payoutNumerators = [];
-    for (let i = 0; i < outcomes.length; i++) {
-        payoutNumerators.push(
-            parseInt(
-                await app
-                    .call("getPayoutNumerators", conditionId, i)
-                    .toPromise()
-            )
-        );
+
+    const outcomes = [];
+    const collateralTokenAddress = await app.call("weth9Token").toPromise();
+    for (let i = 0; i < rawOutcomes.length; i++) {
+        const collectionId = await app
+            .call("getCollectionId", asciiToHex(""), conditionId, i)
+            .toPromise();
+        const positionId = await app
+            .call("getPositionId", collateralTokenAddress, collectionId)
+            .toPromise();
+        const balance = await app.call("balanceOf", positionId).toPromise();
+        const price = await app
+            .call("getMarginalPrice", conditionId, i)
+            .toPromise();
+        outcomes.push({
+            label: hexToAscii(removeTrailingZeroes(rawOutcomes[i])),
+            holding: fromWei(balance),
+            price: new BigNumber(price)
+                .dividedBy(new BigNumber("2").pow("64"))
+                .toString(),
+        });
     }
-    const totalShares = payoutNumerators.reduce(
-        (totalShares, numerator) => totalShares + numerator,
-        0
-    );
-    const odds = payoutNumerators.reduce((odds, numerator) => {
-        odds.push(totalShares > 0 ? numerator / totalShares : 0);
-        return odds;
-    }, []);
     return {
         conditionId,
         number,
         creator,
         oracle,
         question: hexToAscii(removeTrailingZeroes(question)),
-        outcomes: outcomes.map(removeTrailingZeroes).map(hexToAscii),
-        odds,
+        outcomes,
         timestamp: parseInt(timestamp),
+        endsAt: parseInt(endsAt),
     };
 };
 

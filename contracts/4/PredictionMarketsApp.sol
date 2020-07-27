@@ -5,22 +5,36 @@ import "@aragon/os/contracts/lib/math/SafeMath.sol";
 
 interface IConditionalTokens {
     function prepareCondition(
-        address _oracle,
-        bytes32 _questionId,
-        uint _outcomesAmount
+        address oracle,
+        bytes32 questionId,
+        uint outcomesAmount
     ) external;
     function getConditionId(
-        address _oracle,
-        bytes32 _questionId,
-        uint _outcomeSlotCount
+        address oracle,
+        bytes32 questionId,
+        uint outcomeSlotCount
     ) external pure returns (bytes32);
-    function payoutNumerators(bytes32 _conditionId, uint _outcomeIndex) public view returns (uint);
+    function getCollectionId(
+        bytes32 parentCollectionId,
+        bytes32 conditionId,
+        uint indexSet
+    ) external view returns (bytes32);
+    function getPositionId(
+        IERC20 collateralToken,
+        bytes32 collectionId
+    ) external view returns (uint);
+    function balanceOf(
+        address owner,
+        uint positionId
+    ) external view returns (uint);
 }
 
 interface ILMSRMarketMaker {
-    function trade(int[] memory outcomeTokenAmounts, int collateralLimit)
-        public
-        returns (int netCost);
+    function trade(
+        int[] outcomeTokenAmounts,
+        int collateralLimit
+    ) external returns (int netCost);
+    function calcMarginalPrice(uint8 outcomeTokenIndex) external view returns (uint price);
 }
 
 interface IERC20 {
@@ -33,26 +47,31 @@ interface IERC20 {
 }
 
 contract IWETH9 is IERC20 {
-    function deposit() public payable;
+    function deposit() external payable;
 }
 
 interface ILMSRMarketMakerFactory {
     function createLMSRMarketMaker(
-        address pmSystem,
-        address collateralToken,
+        IConditionalTokens pmSystem,
+        IERC20 collateralToken,
         bytes32[] conditionIds,
         uint64 fee,
-        address whitelist,
+        IWhitelist whitelist,
         uint funding
     ) external returns (ILMSRMarketMaker lmsrMarketMaker);
 }
 
+interface IWhitelist {
+  function addToWhitelist(address[] users) external;
+  function removeFromWhitelist(address[] users) external;
+}
 
 contract PredictionMarketsApp is AragonApp {
     using SafeMath for uint256;
 
     /// ACL
     bytes32 constant public CREATE_MARKET_ROLE = keccak256("CREATE_MARKET_ROLE");
+    bytes32 constant public TRADE_ROLE = keccak256("TRADE_ROLE");
 
     /// Events
     event CreateMarket(
@@ -62,22 +81,40 @@ contract PredictionMarketsApp is AragonApp {
         address oracle,
         bytes32 question,
         bytes32[] outcomes,
+        uint timestamp,
+        uint endsAt
+    );
+
+    event Trade(
+        bytes32 indexed conditionId,
+        int[] outcomeTokenAmounts,
+        address transactor,
         uint timestamp
     );
 
+    struct SafeMarketMaker {
+        ILMSRMarketMaker marketMaker;
+        bool exists;
+    }
+
     IConditionalTokens public conditionalTokens;
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
+    IWhitelist public whitelist;
     IWETH9 public weth9Token;
     uint public marketsNumber;
+    mapping(bytes32 => SafeMarketMaker) public marketMakers;
 
     function initialize(
         address _conditionalTokensAddress,
         address _marketMakerFactoryAddress,
-        address _weth9TokenAddress
+        address _weth9TokenAddress,
+        address _whitelistAddress
     ) public onlyInit {
         conditionalTokens = IConditionalTokens(_conditionalTokensAddress);
         lmsrMarketMakerFactory = ILMSRMarketMakerFactory(_marketMakerFactoryAddress);
         weth9Token = IWETH9(_weth9TokenAddress);
+        marketsNumber = 0;
+        whitelist = IWhitelist(_whitelistAddress);
         initialized();
     }
 
@@ -86,22 +123,24 @@ contract PredictionMarketsApp is AragonApp {
             bytes32 _questionId,
             uint _outcomesAmount,
             bytes32 _question,
-            bytes32[] _outcomes) external payable auth(CREATE_MARKET_ROLE) {
+            bytes32[] _outcomes,
+            uint endsAt) external payable auth(CREATE_MARKET_ROLE) {
         conditionalTokens.prepareCondition(_oracle, _questionId, _outcomesAmount);
-        weth9Token.deposit.value(msg.value);
+        weth9Token.deposit.value(msg.value)();
         weth9Token.approve(address(lmsrMarketMakerFactory), msg.value);
         bytes32[] memory _conditionIds = new bytes32[](1);
         bytes32 _conditionId = conditionalTokens.getConditionId(_oracle, _questionId, _outcomesAmount);
         _conditionIds[0] = _conditionId;
-        lmsrMarketMakerFactory.createLMSRMarketMaker(
-            address(conditionalTokens),
-            address(weth9Token),
+        ILMSRMarketMaker _marketMaker = lmsrMarketMakerFactory.createLMSRMarketMaker(
+            conditionalTokens,
+            weth9Token,
             _conditionIds,
             // TODO: think about a possible fee
             0,
-            address(0x0000000000000000000000000000000000000000),
+            whitelist,
             msg.value
         );
+        marketMakers[_conditionId] = SafeMarketMaker({ marketMaker: _marketMaker, exists: true });
         marketsNumber++;
         emit CreateMarket(
             _conditionId,
@@ -110,11 +149,44 @@ contract PredictionMarketsApp is AragonApp {
             _oracle,
             _question,
             _outcomes,
-            getTimestamp64()
+            getTimestamp64(),
+            endsAt
         );
     }
 
-    function getPayoutNumerators(bytes32 _conditionId, uint _outcomeIndex) external view returns(uint) {
-        return conditionalTokens.payoutNumerators(_conditionId, _outcomeIndex);
+    function getCollectionId(bytes32 _parentCollectionId, bytes32 _conditionId, uint _indexSet) external view returns (bytes32) {
+        return conditionalTokens.getCollectionId(_parentCollectionId, _conditionId, _indexSet);
+    }
+
+    function getPositionId(IERC20 _collateralToken, bytes32 _collectionId) external view returns (uint) {
+        return conditionalTokens.getPositionId(_collateralToken, _collectionId);
+    }
+
+    function balanceOf(uint _positionId) public view returns (uint) {
+        return conditionalTokens.balanceOf(msg.sender, _positionId);
+    }
+
+    function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex) external view returns (uint) {
+        SafeMarketMaker safeMarketMaker = marketMakers[_conditionId];
+        require(safeMarketMaker.exists, "NON_EXISTENT_CONDITION");
+        return safeMarketMaker.marketMaker.calcMarginalPrice(_outcomeIndex);
+    }
+
+    function trade(
+            bytes32 _conditionId,
+            int[] _outcomeTokenAmounts,
+            int _collateralLimit) external payable auth(TRADE_ROLE) returns (int) {
+        SafeMarketMaker safeMarketMaker = marketMakers[_conditionId];
+        require(safeMarketMaker.exists, "NON_EXISTENT_CONDITION");
+        if(msg.value > 0) {
+            // Even though it's not certain, if someone sends ETH, they
+            // probably want to buy tokens, so perform ETH -> WETH conversion
+            // and set allowance accordingly
+            weth9Token.deposit.value(msg.value)();
+            weth9Token.approve(address(safeMarketMaker.marketMaker), msg.value);
+        }
+        int _netCost = safeMarketMaker.marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
+        emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
+        return _netCost;
     }
 }

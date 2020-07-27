@@ -5,6 +5,7 @@ import styled from "styled-components";
 import IdentityBadge from "@aragon/ui/dist/IdentityBadge";
 import ProgressBar from "@aragon/ui/dist/ProgressBar";
 import { textStyle } from "@aragon/ui/dist/text-styles";
+import BigNumber from "bignumber.js";
 
 const PointerCard = styled(Card)`
     cursor: pointer;
@@ -38,7 +39,6 @@ export const MarketCard = ({
     creator,
     question,
     outcomes,
-    odds,
     onClick,
 }) => {
     const handleLocalClick = useCallback(() => {
@@ -61,11 +61,11 @@ export const MarketCard = ({
                     <Number>#{number}:</Number>
                     <StandardText>{question}</StandardText>
                 </EllipsizedTextBox>
-                {outcomes.slice(0, 2).map((outcome, index) => {
-                    const odd = odds[index];
+                {outcomes.map((outcome, index) => {
+                    const prettyPrice = new BigNumber(outcome.price);
                     return (
                         <OutcomeFlex
-                            key={outcome}
+                            key={index}
                             height="40px"
                             flexDirection="column"
                             mb="8px"
@@ -75,10 +75,15 @@ export const MarketCard = ({
                                     ${textStyle("label2")}
                                 `}
                             >
-                                {outcome} ({odd}%)
+                                {outcome.label} (
+                                {prettyPrice
+                                    .multipliedBy("100")
+                                    .decimalPlaces(2)
+                                    .toString()}
+                                %)
                             </Box>
                             <Box>
-                                <ProgressBar value={odd} />
+                                <ProgressBar value={prettyPrice.toNumber()} />
                             </Box>
                         </OutcomeFlex>
                     );

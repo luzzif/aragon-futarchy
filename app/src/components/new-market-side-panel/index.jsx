@@ -3,6 +3,8 @@ import { Field, Button, TextInput, IconRemove, DataView } from "@aragon/ui";
 import SidePanel from "@aragon/ui/dist/SidePanel";
 import styled from "styled-components";
 import BigNumber from "bignumber.js";
+import { DateTime, Duration } from "luxon";
+import DateRangePicker from "@aragon/ui/dist/DateRangePicker";
 
 const Margin = styled.div`
     height: 8px;
@@ -12,11 +14,17 @@ const EmptyStatusText = styled.span`
     font-size: 16px;
 `;
 
+const WideDateRangePicker = styled(DateRangePicker)`
+    width: 100%;
+`;
+
 export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const [question, setQuestion] = useState("");
     const [outcome, setOutcome] = useState("");
     const [outcomes, setOutcomes] = useState([]);
     const [outcomeProbability, setOutcomeProbability] = useState(0);
+    const [startsAt] = useState(new Date());
+    const [endsAt, setEndsAt] = useState(null);
     const [funding, setFunding] = useState("");
 
     useEffect(() => {
@@ -38,6 +46,16 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome(event.target.value);
     }, []);
 
+    const handleTemporalValidityChange = useCallback((range) => {
+        let { end } = range;
+        if (end.getTime() < startsAt.getTime()) {
+            end = DateTime.fromJSDate(startsAt)
+                .plus(Duration.fromObject({ days: 1 }))
+                .toJSDate();
+        }
+        setEndsAt(end);
+    }, []);
+
     const handleFundingChange = useCallback((event) => {
         setFunding(event.target.value);
     }, []);
@@ -57,14 +75,15 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome("");
         setOutcomes([]);
         setFunding("");
+        setEndsAt(null);
         setOutcomeProbability(0);
     };
 
     const handleCreate = useCallback(() => {
-        onCreate(question, outcomes, funding);
+        onCreate(question, outcomes, funding, endsAt);
         onClose();
         resetState();
-    }, [onClose, question, outcomes, funding]);
+    }, [onClose, question, outcomes, funding, endsAt]);
 
     const handleClose = useCallback(() => {
         onClose();
@@ -98,7 +117,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     onChange={handleOutcomeChange}
                 />
             </Field>
-            <Field label="Addded outcomes">
+            <Field label="Added outcomes">
                 <DataView
                     fields={["Outcome", "Probability"]}
                     entries={outcomes}
@@ -122,6 +141,14 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     wide
                     value={funding}
                     onChange={handleFundingChange}
+                />
+            </Field>
+            <Field label="Temporal validity">
+                <WideDateRangePicker
+                    wide
+                    startDate={startsAt}
+                    endDate={endsAt}
+                    onChange={handleTemporalValidityChange}
                 />
             </Field>
             <Button

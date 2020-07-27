@@ -4,6 +4,11 @@
             "name": "Create a prediction market",
             "id": "CREATE_MARKET_ROLE",
             "params": []
+        },
+        {
+            "name": "Trade on a prediction market",
+            "id": "TRADE_ROLE",
+            "params": []
         }
     ],
     "environments": {

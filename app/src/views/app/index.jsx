@@ -25,7 +25,7 @@ export const App = () => {
     }, []);
 
     const handleMarketCreate = useCallback(
-        (question, outcomes, funding) => {
+        (question, outcomes, funding, endsAt) => {
             const rawQuestionId = Date.now().toString();
             // shortening the question id to a maximum of 32 chars, just in case
             const shortenedQuestionId = rawQuestionId.substring(
@@ -37,6 +37,7 @@ export const App = () => {
                 outcomes.length,
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
+                parseInt(endsAt.getTime() / 1000),
                 {
                     from: connectedAccount,
                     value: toWei(funding.toString(), "ether"),
@@ -58,6 +59,21 @@ export const App = () => {
     const handleMarketBack = useCallback(() => {
         setSelectedMarket(null);
     }, []);
+
+    const handleTrade = useCallback(
+        (conditionId, outcomeTokensAmount, collateralAmount) => {
+            api.trade(
+                conditionId,
+                outcomeTokensAmount.map((amount) => toWei(amount.toString())),
+                toWei(collateralAmount, "ether"),
+                {
+                    from: connectedAccount,
+                    value: toWei(collateralAmount, "ether"),
+                }
+            ).subscribe(() => {}, console.error);
+        },
+        [api, connectedAccount]
+    );
 
     return (
         <Main>
@@ -85,7 +101,11 @@ export const App = () => {
                 />
             )}
             {selectedMarket && (
-                <Market {...selectedMarket} onBack={handleMarketBack} />
+                <Market
+                    {...selectedMarket}
+                    onBack={handleMarketBack}
+                    onTrade={handleTrade}
+                />
             )}
         </Main>
     );
