@@ -13,8 +13,11 @@ import BigNumber from "bignumber.js";
 import Timer from "@aragon/ui/dist/Timer";
 import IconCheck from "@aragon/ui/dist/IconCheck";
 import Button from "@aragon/ui/dist/Button";
-import Info from "@aragon/ui/dist/Info";
 import { TradingSidePanel } from "./trading-side-panel";
+import { useAragonApi } from "@aragon/api-react";
+import { toWei, fromWei } from "web3-utils";
+import { CloseSidePanel } from "./close-side-panel";
+import { IconError } from "@aragon/ui";
 
 export const Market = ({
     onBack,
@@ -25,8 +28,13 @@ export const Market = ({
     outcomes,
     timestamp,
     endsAt,
+    open,
     onTrade,
+    onClose,
+    connectedAccount,
 }) => {
+    const { api } = useAragonApi();
+
     const theme = useTheme();
     const [checked, setChecked] = useState(outcomes[0]);
     const [luxonTimestamp, setLuxonTimestamp] = useState(null);
@@ -34,14 +42,17 @@ export const Market = ({
     const [canSell, setCanSell] = useState(false);
     const [buying, setBuying] = useState(false);
     const [selling, setSelling] = useState(false);
+    const [closing, setClosing] = useState(false);
+    const [sharesAmount, setSharesAmount] = useState("");
+    const [netCost, setNetCost] = useState("");
 
     useEffect(() => {
         setLuxonTimestamp(DateTime.fromSeconds(timestamp));
     }, [timestamp]);
 
     useEffect(() => {
-        setTradeable(endsAt > new Date().getTime() / 1000);
-    }, [endsAt]);
+        setTradeable(open && endsAt > new Date().getTime() / 1000);
+    }, [endsAt, open]);
 
     useEffect(() => {
         setCanSell(
@@ -49,7 +60,7 @@ export const Market = ({
                 new BigNumber(outcome.holding).isPositive()
             )
         );
-    }, [endsAt]);
+    }, [endsAt, outcomes]);
 
     const handleRadioChange = useCallback(
         (index) => {
@@ -60,32 +71,71 @@ export const Market = ({
 
     const handleBuyClick = useCallback(() => {
         setBuying(true);
-    }, [outcomes]);
+    }, []);
 
     const handleSellClick = useCallback(() => {
         setSelling(false);
-    }, [outcomes]);
+    }, []);
 
     const handleTradingSidePanelClose = useCallback(() => {
         setBuying(false);
         setSelling(false);
-    }, [outcomes]);
+    }, []);
 
-    const handleTrade = useCallback(
-        (buy, outcome, collateralAmount) => {
-            const outcomeTokensAmount = outcomes
-                .map((mappingOutcome) =>
-                    mappingOutcome === outcome
-                        ? new BigNumber(collateralAmount)
-                              .dividedBy(outcome.price)
-                              .decimalPlaces(2)
-                              .toNumber()
-                        : 0
-                )
-                .map((amount) => (buy ? amount : -amount));
-            onTrade(conditionId, outcomeTokensAmount, collateralAmount);
+    const handleSharesAmountChange = useCallback(
+        (event) => {
+            const sharesAmount = event.target.value;
+            setSharesAmount(sharesAmount);
+            if (sharesAmount) {
+                api.call(
+                    "getNetCost",
+                    outcomes.map((outcome) =>
+                        outcome === checked ? toWei(sharesAmount) : "0"
+                    ),
+                    conditionId
+                ).subscribe((weiNetCost) => {
+                    setNetCost(fromWei(weiNetCost, "ether"));
+                }, console.error);
+            }
         },
-        [conditionId]
+        [api, conditionId, outcomes, checked]
+    );
+
+    const handleTrade = useCallback(() => {
+        const outcomeTokensAmount = outcomes
+            .map((mappingOutcome) =>
+                mappingOutcome === checked ? sharesAmount : 0
+            )
+            .map((amount) => (buying ? amount : -amount));
+        onTrade(conditionId, outcomeTokensAmount, netCost);
+    }, [
+        buying,
+        checked,
+        conditionId,
+        netCost,
+        onTrade,
+        outcomes,
+        sharesAmount,
+    ]);
+
+    const handleCloseMarket = useCallback(() => {
+        setClosing(true);
+    }, []);
+
+    const handleCloseMarketClose = useCallback(() => {
+        setClosing(false);
+    }, []);
+
+    const handleCloseMarketConfirm = useCallback(
+        (outcome) => {
+            onClose(
+                conditionId,
+                outcomes.map((mappedOutcome) =>
+                    mappedOutcome === outcome ? "1" : "0"
+                )
+            );
+        },
+        [conditionId, onClose, outcomes]
     );
 
     return (
@@ -93,14 +143,6 @@ export const Market = ({
             <Flex flexWrap="wrap" pt="16px" width="100%" flexDirection="column">
                 <Box>
                     <Bar primary={<BackButton onClick={onBack} />} />
-                </Box>
-                <Box mb="16px">
-                    <Info title="Caution" mode="warning">
-                        Before trading on a market, make sure that its outcome
-                        will be known by its resolution date and it isn't an
-                        invalid market. Be aware that market makers may remove
-                        liquidity from the market at any time!
-                    </Info>
                 </Box>
                 <Box mb="16px">
                     <AuiBox width="100%">
@@ -124,8 +166,8 @@ export const Market = ({
                                 mb="8px"
                                 css={`
                                 ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
+                                    color: ${theme.contentSecondary};
+                                `}
                             >
                                 Created by
                             </Box>
@@ -157,6 +199,46 @@ export const Market = ({
                                         DateTime.DATETIME_SHORT
                                     )}
                             </Box>
+                            <Box
+                                mb="8px"
+                                css={`
+                                    ${textStyle("label2")}
+                                    color: ${theme.contentSecondary};
+                                `}
+                            >
+                                Status
+                            </Box>
+                            <Flex
+                                mb="24px"
+                                css={`
+                                    ${textStyle("label2")}
+                                    color: ${
+                                        tradeable
+                                            ? theme.positive
+                                            : theme.negative
+                                    };
+                                `}
+                                display="flex"
+                                alignItems="center"
+                                height="30px"
+                            >
+                                <Box mr="8px">
+                                    {tradeable ? <IconCheck /> : <IconError />}
+                                </Box>
+                                <Box
+                                    css={`
+                                        ${textStyle("body2")}
+                                    `}
+                                    pb="4px"
+                                >
+                                    {tradeable ? "Open" : "Closed"}{" "}
+                                </Box>
+                                {tradeable && (
+                                    <Box ml="8px" pb="4px">
+                                        <Timer end={new Date(endsAt * 1000)} />
+                                    </Box>
+                                )}
+                            </Flex>
                             <Box
                                 mb="8px"
                                 css={`
@@ -197,7 +279,11 @@ export const Market = ({
                                         mb="16px"
                                     >
                                         {tradeable && (
-                                            <Box mr="16px">
+                                            <Box
+                                                mr="16px"
+                                                display="flex"
+                                                alignItems="center"
+                                            >
                                                 <Radio
                                                     id={index}
                                                     checked={
@@ -234,7 +320,7 @@ export const Market = ({
                                 );
                             })}
                             {tradeable && (
-                                <Flex mt="16px" justifyContent="space-around">
+                                <Flex mt="16px" justifyContent="space-between">
                                     <Button
                                         mode="positive"
                                         onClick={handleBuyClick}
@@ -252,50 +338,30 @@ export const Market = ({
                             )}
                         </Flex>
                     </AuiBox>
-                    <AuiBox width="100%" heading="Status" padding={20}>
-                        <Flex width="100%" height="100%" flexDirection="column">
-                            <Flex
-                                mb="8px"
-                                css={`
-                                ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
-                                display="flex"
-                                alignItems="center"
-                                height="30px"
-                            >
-                                {tradeable && (
-                                    <>
-                                        <Box mr="8px">
-                                            <IconCheck />
-                                        </Box>
-                                        <Box
-                                            css={`
-                                            ${textStyle("body1")}
-                                            color: ${theme.contentSecondary};
-                                        `}
-                                            pb="4px"
-                                        >
-                                            Open for trade
-                                        </Box>
-                                    </>
-                                )}
-                            </Flex>
-                            <Box>
-                                {tradeable && (
-                                    <Timer end={new Date(endsAt * 1000)} />
-                                )}
-                            </Box>
-                        </Flex>
-                    </AuiBox>
+                    {tradeable && connectedAccount === creator && (
+                        <AuiBox width="100%" heading="Actions" padding={20}>
+                            <Button mode="negative" onClick={handleCloseMarket}>
+                                Close market
+                            </Button>
+                        </AuiBox>
+                    )}
                 </Box>
             </Flex>
             <TradingSidePanel
                 open={buying || selling}
                 onClose={handleTradingSidePanelClose}
+                sharesAmount={sharesAmount}
+                netCost={netCost}
+                onChange={handleSharesAmountChange}
                 buy={buying}
-                outcome={checked}
+                outcomeLabel={checked.label.toLowerCase()}
                 onTrade={handleTrade}
+            />
+            <CloseSidePanel
+                open={closing}
+                onClose={handleCloseMarketClose}
+                outcomes={outcomes}
+                onConfirm={handleCloseMarketConfirm}
             />
         </>
     );

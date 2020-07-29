@@ -61,18 +61,26 @@ export const App = () => {
     }, []);
 
     const handleTrade = useCallback(
-        (conditionId, outcomeTokensAmount, collateralAmount) => {
+        (conditionId, outcomeTokensAmount, netCost) => {
             api.trade(
                 conditionId,
                 outcomeTokensAmount.map((amount) => toWei(amount.toString())),
-                toWei(collateralAmount, "ether"),
+                toWei(netCost, "ether"),
                 {
                     from: connectedAccount,
-                    value: toWei(collateralAmount, "ether"),
+                    value: toWei((parseFloat(netCost) + 1).toString(), "ether"),
                 }
             ).subscribe(() => {}, console.error);
         },
         [api, connectedAccount]
+    );
+
+    const handleClose = useCallback(
+        (conditionId, payouts) => {
+            api.closeMarket(payouts, conditionId).subscribe(() => {},
+            console.error);
+        },
+        [api]
     );
 
     return (
@@ -104,7 +112,9 @@ export const App = () => {
                 <Market
                     {...selectedMarket}
                     onBack={handleMarketBack}
+                    connectedAccount={connectedAccount}
                     onTrade={handleTrade}
+                    onClose={handleClose}
                 />
             )}
         </Main>

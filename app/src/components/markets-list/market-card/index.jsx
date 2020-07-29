@@ -1,14 +1,21 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { Flex, Box } from "reflexbox";
-import Card from "@aragon/ui/dist/Card";
-import styled from "styled-components";
+import AuiBox from "@aragon/ui/dist/Box";
+import styled, { css } from "styled-components";
 import IdentityBadge from "@aragon/ui/dist/IdentityBadge";
 import ProgressBar from "@aragon/ui/dist/ProgressBar";
 import { textStyle } from "@aragon/ui/dist/text-styles";
 import BigNumber from "bignumber.js";
+import { useTheme } from "@aragon/ui/dist/Theme";
+import Timer from "@aragon/ui/dist/Timer";
 
-const PointerCard = styled(Card)`
+const PointerAuiBox = styled(AuiBox)`
     cursor: pointer;
+    ${(props) =>
+        !props.open &&
+        css`
+            background: ${(props) => props.negativeColor};
+        `};
 `;
 
 const EllipsizedTextBox = styled(Box)`
@@ -39,18 +46,32 @@ export const MarketCard = ({
     creator,
     question,
     outcomes,
+    endsAt,
+    open,
     onClick,
 }) => {
+    const theme = useTheme();
+    const [pending, setPending] = useState();
+
+    useEffect(() => {
+        setPending(open && new Date().getTime() < endsAt * 1000);
+    }, [endsAt, open]);
+
     const handleLocalClick = useCallback(() => {
         onClick(conditionId);
-    }, [onClick]);
+    }, [conditionId, onClick]);
 
     return (
-        <PointerCard width="200px" height="200px" onClick={handleLocalClick}>
+        <PointerAuiBox
+            pending={pending}
+            onClick={handleLocalClick}
+            open={open}
+            negativeColor={theme.negativeSurface}
+            padding={16}
+        >
             <Flex
                 width="100%"
                 height="100%"
-                p="16px"
                 overflow="hidden"
                 flexDirection="column"
             >
@@ -88,7 +109,20 @@ export const MarketCard = ({
                         </OutcomeFlex>
                     );
                 })}
+                {
+                    <Flex flexDirection="column">
+                        <Box>
+                            <Timer
+                                end={
+                                    pending
+                                        ? new Date(endsAt * 1000)
+                                        : new Date(0)
+                                }
+                            />
+                        </Box>
+                    </Flex>
+                }
             </Flex>
-        </PointerCard>
+        </PointerAuiBox>
     );
 };

@@ -9,6 +9,11 @@
             "name": "Trade on a prediction market",
             "id": "TRADE_ROLE",
             "params": []
+        },
+        {
+            "name": "Close a prediction market",
+            "id": "CLOSE_MARKET_ROLE",
+            "params": []
         }
     ],
     "environments": {

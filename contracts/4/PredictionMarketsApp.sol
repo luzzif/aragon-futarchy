@@ -4,37 +4,19 @@ import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 
 interface IConditionalTokens {
-    function prepareCondition(
-        address oracle,
-        bytes32 questionId,
-        uint outcomesAmount
-    ) external;
-    function getConditionId(
-        address oracle,
-        bytes32 questionId,
-        uint outcomeSlotCount
-    ) external pure returns (bytes32);
-    function getCollectionId(
-        bytes32 parentCollectionId,
-        bytes32 conditionId,
-        uint indexSet
-    ) external view returns (bytes32);
-    function getPositionId(
-        IERC20 collateralToken,
-        bytes32 collectionId
-    ) external view returns (uint);
-    function balanceOf(
-        address owner,
-        uint positionId
-    ) external view returns (uint);
+    function prepareCondition(address oracle, bytes32 questionId, uint outcomesAmount) external;
+    function getConditionId(address oracle, bytes32 questionId, uint outcomeSlotCount) external pure returns (bytes32);
+    function getCollectionId(bytes32 parentCollectionId, bytes32 conditionId, uint indexSet) external view returns (bytes32);
+    function getPositionId(IERC20 collateralToken, bytes32 collectionId) external view returns (uint);
+    function balanceOf(address owner, uint positionId) external view returns (uint);
+    function reportPayouts(bytes32 questionId, uint[] payouts) external;
 }
 
 interface ILMSRMarketMaker {
-    function trade(
-        int[] outcomeTokenAmounts,
-        int collateralLimit
-    ) external returns (int netCost);
+    function trade(int[] outcomeTokenAmounts, int collateralLimit) external returns (int netCost);
     function calcMarginalPrice(uint8 outcomeTokenIndex) external view returns (uint price);
+    function calcNetCost(int[] outcomeTokenAmounts) external view returns (int netCost);
+    function close() public;
 }
 
 interface IERC20 {
@@ -72,6 +54,7 @@ contract PredictionMarketsApp is AragonApp {
     /// ACL
     bytes32 constant public CREATE_MARKET_ROLE = keccak256("CREATE_MARKET_ROLE");
     bytes32 constant public TRADE_ROLE = keccak256("TRADE_ROLE");
+    bytes32 constant public CLOSE_MARKET_ROLE = keccak256("CLOSE_MARKET_ROLE");
 
     /// Events
     event CreateMarket(
@@ -92,8 +75,16 @@ contract PredictionMarketsApp is AragonApp {
         uint timestamp
     );
 
-    struct SafeMarketMaker {
+    event CloseMarket(
+        bytes32 indexed conditionId,
+        address closer,
+        uint[] results,
+        uint timestamp
+    );
+
+    struct MarketData {
         ILMSRMarketMaker marketMaker;
+        address oracle;
         bool exists;
     }
 
@@ -102,7 +93,7 @@ contract PredictionMarketsApp is AragonApp {
     IWhitelist public whitelist;
     IWETH9 public weth9Token;
     uint public marketsNumber;
-    mapping(bytes32 => SafeMarketMaker) public marketMakers;
+    mapping(bytes32 => MarketData) public marketData;
 
     function initialize(
         address _conditionalTokensAddress,
@@ -140,7 +131,11 @@ contract PredictionMarketsApp is AragonApp {
             whitelist,
             msg.value
         );
-        marketMakers[_conditionId] = SafeMarketMaker({ marketMaker: _marketMaker, exists: true });
+        marketData[_conditionId] = MarketData({
+            marketMaker: _marketMaker,
+            oracle: _oracle,
+            exists: true
+        });
         marketsNumber++;
         emit CreateMarket(
             _conditionId,
@@ -167,26 +162,43 @@ contract PredictionMarketsApp is AragonApp {
     }
 
     function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex) external view returns (uint) {
-        SafeMarketMaker safeMarketMaker = marketMakers[_conditionId];
-        require(safeMarketMaker.exists, "NON_EXISTENT_CONDITION");
-        return safeMarketMaker.marketMaker.calcMarginalPrice(_outcomeIndex);
+        MarketData data = marketData[_conditionId];
+        require(data.exists, "NON_EXISTENT_CONDITION");
+        return data.marketMaker.calcMarginalPrice(_outcomeIndex);
+    }
+
+    function getNetCost(int[] _outcomeTokenAmounts, bytes32 _conditionId) external view returns (int) {
+        MarketData data = marketData[_conditionId];
+        require(data.exists, "NON_EXISTENT_CONDITION");
+        return data.marketMaker.calcNetCost(_outcomeTokenAmounts);
     }
 
     function trade(
             bytes32 _conditionId,
             int[] _outcomeTokenAmounts,
             int _collateralLimit) external payable auth(TRADE_ROLE) returns (int) {
-        SafeMarketMaker safeMarketMaker = marketMakers[_conditionId];
-        require(safeMarketMaker.exists, "NON_EXISTENT_CONDITION");
+        MarketData data = marketData[_conditionId];
+        require(data.exists, "NON_EXISTENT_CONDITION");
         if(msg.value > 0) {
             // Even though it's not certain, if someone sends ETH, they
             // probably want to buy tokens, so perform ETH -> WETH conversion
             // and set allowance accordingly
             weth9Token.deposit.value(msg.value)();
-            weth9Token.approve(address(safeMarketMaker.marketMaker), msg.value);
+            weth9Token.approve(address(data.marketMaker), msg.value);
         }
-        int _netCost = safeMarketMaker.marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
+        int _netCost = data.marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
         emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
         return _netCost;
+    }
+
+    function closeMarket(
+            uint[] _payouts,
+            bytes32 _conditionId) external auth(CLOSE_MARKET_ROLE) returns (int) {
+        MarketData data = marketData[_conditionId];
+        require(data.exists, "NON_EXISTENT_CONDITION");
+        require(data.oracle == msg.sender, "INVALID_ORACLE");
+        data.marketMaker.close();
+        conditionalTokens.reportPayouts(_conditionId, _payouts);
+        emit CloseMarket(_conditionId, msg.sender, _payouts, getTimestamp64());
     }
 }

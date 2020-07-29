@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Flex, Box } from "reflexbox";
 import { textStyle } from "@aragon/ui/dist/style";
 import BigNumber from "bignumber.js";
@@ -12,44 +12,42 @@ const Margin = styled.div`
     height: 8px;
 `;
 
-export const TradingSidePanel = ({ open, outcome, onClose, buy, onTrade }) => {
-    const [collateralAmount, setCollateralAmount] = useState("");
-    const [estimatedShares, setEstimatedShares] = useState("0");
+export const TradingSidePanel = ({
+    open,
+    outcomeLabel,
+    sharesAmount,
+    netCost,
+    onChange,
+    onClose,
+    buy,
+    onTrade,
+}) => {
+    const [collateralToSpend, setCollateralToSpend] = useState("0");
 
     useEffect(() => {
-        if (collateralAmount) {
-            setEstimatedShares(
-                new BigNumber(collateralAmount)
-                    .dividedBy(outcome.price)
-                    .decimalPlaces(2)
+        if (sharesAmount && netCost) {
+            setCollateralToSpend(
+                new BigNumber(sharesAmount)
+                    .multipliedBy(netCost)
+                    .decimalPlaces(4)
                     .toString()
             );
         }
-    }, [collateralAmount]);
-
-    const handleCollateralAmountChange = useCallback((event) => {
-        setCollateralAmount(event.target.value);
-    }, []);
-
-    const handleTrade = useCallback(() => {
-        onTrade(buy, outcome, collateralAmount);
-    }, [collateralAmount, outcome, buy]);
+    }, [netCost, sharesAmount]);
 
     return (
         <SidePanel
-            title={`${
-                buy ? "Buy" : "Sell"
-            } "${outcome.label.toLowerCase()}" shares`}
+            title={`${buy ? "Buy" : "Sell"} "${outcomeLabel}" shares`}
             opened={open}
             onClose={onClose}
         >
             <Margin />
-            <Field label="ETH to spend">
+            <Field label={`Shares to ${buy ? "buy" : "sell"}`}>
                 <TextInput
                     type="number"
                     wide
-                    value={collateralAmount}
-                    onChange={handleCollateralAmountChange}
+                    value={sharesAmount}
+                    onChange={onChange}
                 />
             </Field>
             <Flex flexDirection="column" mb="16px">
@@ -58,17 +56,15 @@ export const TradingSidePanel = ({ open, outcome, onClose, buy, onTrade }) => {
                         ${textStyle("body3")}
                     `}
                 >
-                    Estimated shares to receive: {estimatedShares}
+                    Estimated ETH to spend: {collateralToSpend}
                 </Box>
             </Flex>
             <Button
                 mode={buy ? "positive" : "negative"}
                 wide
                 label={buy ? "Buy" : "Sell"}
-                disabled={
-                    !!(collateralAmount && parseFloat(collateralAmount) <= 0)
-                }
-                onClick={handleTrade}
+                disabled={!!(sharesAmount && parseFloat(sharesAmount) <= 0)}
+                onClick={onTrade}
             />
         </SidePanel>
     );

@@ -46,15 +46,18 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome(event.target.value);
     }, []);
 
-    const handleTemporalValidityChange = useCallback((range) => {
-        let { end } = range;
-        if (end.getTime() < startsAt.getTime()) {
-            end = DateTime.fromJSDate(startsAt)
-                .plus(Duration.fromObject({ days: 1 }))
-                .toJSDate();
-        }
-        setEndsAt(end);
-    }, []);
+    const handleTemporalValidityChange = useCallback(
+        (range) => {
+            let { end } = range;
+            if (end.getTime() < startsAt.getTime()) {
+                end = DateTime.fromJSDate(startsAt)
+                    .plus(Duration.fromObject({ days: 1 }))
+                    .toJSDate();
+            }
+            setEndsAt(end);
+        },
+        [startsAt]
+    );
 
     const handleFundingChange = useCallback((event) => {
         setFunding(event.target.value);
@@ -83,7 +86,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         onCreate(question, outcomes, funding, endsAt);
         onClose();
         resetState();
-    }, [onClose, question, outcomes, funding, endsAt]);
+    }, [onCreate, question, outcomes, funding, endsAt, onClose]);
 
     const handleClose = useCallback(() => {
         onClose();

@@ -23,7 +23,7 @@ const removeTrailingZeroes = (string) => {
     return string.substring(0, string.length - numberOfTrailingZeroes);
 };
 
-const eventValuesToMarket = async (event) => {
+const handleCreateMarket = async (event) => {
     const { returnValues } = event;
     const {
         conditionId,
@@ -66,7 +66,20 @@ const eventValuesToMarket = async (event) => {
         outcomes,
         timestamp: parseInt(timestamp),
         endsAt: parseInt(endsAt),
+        open: true,
     };
+};
+
+const handleCloseMarket = (event, markets) => {
+    const { returnValues } = event;
+    const { conditionId } = returnValues;
+    const marketIndex = markets.findIndex(
+        (market) => market.conditionId === conditionId
+    );
+    if (marketIndex >= 0) {
+        markets[marketIndex].open = false;
+    }
+    return [...markets];
 };
 
 app.store(async (state, action) => {
@@ -83,8 +96,14 @@ app.store(async (state, action) => {
                 ...state,
                 markets: [
                     ...(state.markets || []),
-                    await eventValuesToMarket(action),
+                    await handleCreateMarket(action),
                 ],
+            };
+        }
+        case "CloseMarket": {
+            return {
+                ...state,
+                markets: handleCloseMarket(action, state.markets || []),
             };
         }
         default: {
