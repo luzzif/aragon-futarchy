@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Flex, Box } from "reflexbox";
 import { textStyle } from "@aragon/ui/dist/style";
 import BigNumber from "bignumber.js";
@@ -17,6 +17,7 @@ export const TradingSidePanel = ({
     outcomeLabel,
     sharesAmount,
     netCost,
+    fee,
     onChange,
     onClose,
     buy,
@@ -29,11 +30,16 @@ export const TradingSidePanel = ({
             setCollateralToSpend(
                 new BigNumber(sharesAmount)
                     .multipliedBy(netCost)
+                    .plus(fee)
                     .decimalPlaces(4)
                     .toString()
             );
         }
-    }, [netCost, sharesAmount]);
+    }, [fee, netCost, sharesAmount]);
+
+    const handleTrade = useCallback(() => {
+        onTrade(collateralToSpend);
+    }, [collateralToSpend, onTrade]);
 
     return (
         <SidePanel
@@ -56,7 +62,8 @@ export const TradingSidePanel = ({
                         ${textStyle("body3")}
                     `}
                 >
-                    Estimated ETH to spend: {collateralToSpend}
+                    Estimated ETH to spend: {collateralToSpend} (
+                    {new BigNumber(fee).decimalPlaces(4).toString()} fee)
                 </Box>
             </Flex>
             <Button
@@ -64,7 +71,7 @@ export const TradingSidePanel = ({
                 wide
                 label={buy ? "Buy" : "Sell"}
                 disabled={!!(sharesAmount && parseFloat(sharesAmount) <= 0)}
-                onClick={onTrade}
+                onClick={handleTrade}
             />
         </SidePanel>
     );

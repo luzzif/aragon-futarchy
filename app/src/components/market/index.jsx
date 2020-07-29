@@ -45,6 +45,7 @@ export const Market = ({
     const [closing, setClosing] = useState(false);
     const [sharesAmount, setSharesAmount] = useState("");
     const [netCost, setNetCost] = useState("");
+    const [fee, setFee] = useState("");
 
     useEffect(() => {
         setLuxonTimestamp(DateTime.fromSeconds(timestamp));
@@ -95,28 +96,29 @@ export const Market = ({
                     conditionId
                 ).subscribe((weiNetCost) => {
                     setNetCost(fromWei(weiNetCost, "ether"));
+                    api.call("getMarketFee", conditionId, weiNetCost).subscribe(
+                        (weiFee) => {
+                            setFee(fromWei(weiFee, "ether"));
+                        },
+                        console.error
+                    );
                 }, console.error);
             }
         },
-        [api, conditionId, outcomes, checked]
+        [api, outcomes, conditionId, checked]
     );
 
-    const handleTrade = useCallback(() => {
-        const outcomeTokensAmount = outcomes
-            .map((mappingOutcome) =>
-                mappingOutcome === checked ? sharesAmount : 0
-            )
-            .map((amount) => (buying ? amount : -amount));
-        onTrade(conditionId, outcomeTokensAmount, netCost);
-    }, [
-        buying,
-        checked,
-        conditionId,
-        netCost,
-        onTrade,
-        outcomes,
-        sharesAmount,
-    ]);
+    const handleTrade = useCallback(
+        (collateralToSpend) => {
+            const outcomeTokensAmount = outcomes
+                .map((mappingOutcome) =>
+                    mappingOutcome === checked ? sharesAmount : 0
+                )
+                .map((amount) => (buying ? amount : -amount));
+            onTrade(conditionId, outcomeTokensAmount, collateralToSpend);
+        },
+        [buying, checked, conditionId, onTrade, outcomes, sharesAmount]
+    );
 
     const handleCloseMarket = useCallback(() => {
         setClosing(true);
@@ -352,6 +354,7 @@ export const Market = ({
                 onClose={handleTradingSidePanelClose}
                 sharesAmount={sharesAmount}
                 netCost={netCost}
+                fee={fee}
                 onChange={handleSharesAmountChange}
                 buy={buying}
                 outcomeLabel={checked.label.toLowerCase()}

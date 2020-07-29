@@ -61,14 +61,14 @@ export const App = () => {
     }, []);
 
     const handleTrade = useCallback(
-        (conditionId, outcomeTokensAmount, netCost) => {
+        (conditionId, outcomeTokensAmount, cost) => {
             api.trade(
                 conditionId,
                 outcomeTokensAmount.map((amount) => toWei(amount.toString())),
-                toWei(netCost, "ether"),
+                toWei(cost, "ether"),
                 {
                     from: connectedAccount,
-                    value: toWei((parseFloat(netCost) + 1).toString(), "ether"),
+                    value: toWei(cost, "ether"),
                 }
             ).subscribe(() => {}, console.error);
         },

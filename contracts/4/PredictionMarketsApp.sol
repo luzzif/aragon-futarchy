@@ -16,6 +16,7 @@ interface ILMSRMarketMaker {
     function trade(int[] outcomeTokenAmounts, int collateralLimit) external returns (int netCost);
     function calcMarginalPrice(uint8 outcomeTokenIndex) external view returns (uint price);
     function calcNetCost(int[] outcomeTokenAmounts) external view returns (int netCost);
+    function calcMarketFee(uint outcomeTokenCost) public view returns (uint);
     function close() public;
 }
 
@@ -126,8 +127,7 @@ contract PredictionMarketsApp is AragonApp {
             conditionalTokens,
             weth9Token,
             _conditionIds,
-            // TODO: think about a possible fee
-            0,
+            20000000000000000,
             whitelist,
             msg.value
         );
@@ -171,6 +171,12 @@ contract PredictionMarketsApp is AragonApp {
         MarketData data = marketData[_conditionId];
         require(data.exists, "NON_EXISTENT_CONDITION");
         return data.marketMaker.calcNetCost(_outcomeTokenAmounts);
+    }
+
+    function getMarketFee(bytes32 _conditionId, uint _outcomeTokenCost) external view returns (uint) {
+        MarketData data = marketData[_conditionId];
+        require(data.exists, "NON_EXISTENT_CONDITION");
+        return data.marketMaker.calcMarketFee(_outcomeTokenCost);
     }
 
     function trade(
