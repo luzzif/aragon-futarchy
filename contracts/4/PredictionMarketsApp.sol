@@ -12,6 +12,15 @@ interface IConditionalTokens {
     function reportPayouts(bytes32 questionId, uint[] payouts) external;
 }
 
+interface IERC165 {
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+}
+
+contract IERC1155Receiver is IERC165 {
+    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes data) external returns(bytes4);
+    function onERC1155BatchReceived(address operator, address from, uint256[] ids, uint256[] values, bytes data) external returns(bytes4);
+}
+
 interface ILMSRMarketMaker {
     function trade(int[] outcomeTokenAmounts, int collateralLimit) external returns (int netCost);
     function calcMarginalPrice(uint8 outcomeTokenIndex) external view returns (uint price);
@@ -49,7 +58,7 @@ interface IWhitelist {
   function removeFromWhitelist(address[] users) external;
 }
 
-contract PredictionMarketsApp is AragonApp {
+contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     using SafeMath for uint256;
 
     /// ACL
@@ -195,6 +204,29 @@ contract PredictionMarketsApp is AragonApp {
         int _netCost = data.marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
         emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
         return _netCost;
+    }
+
+    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
+        return interfaceId == this.onERC1155Received.selector ^ this.onERC1155BatchReceived.selector;
+    }
+
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes data
+    ) external returns(bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+            address operator,
+            address from,
+            uint256[] ids,
+            uint256[] values,
+            bytes data) external returns(bytes4) {
+        return this.onERC1155BatchReceived.selector;
     }
 
     function closeMarket(
