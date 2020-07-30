@@ -57,8 +57,8 @@ export const Market = ({
 
     useEffect(() => {
         setCanSell(
-            !outcomes.find((outcome) =>
-                new BigNumber(outcome.holding).isPositive()
+            outcomes.find((outcome) =>
+                new BigNumber(outcome.balance).isPositive()
             )
         );
     }, [endsAt, outcomes]);

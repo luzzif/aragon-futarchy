@@ -10,6 +10,8 @@ interface IConditionalTokens {
     function getPositionId(IERC20 collateralToken, bytes32 collectionId) external view returns (uint);
     function balanceOf(address owner, uint positionId) external view returns (uint);
     function reportPayouts(bytes32 questionId, uint[] payouts) external;
+    function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes data) external;
+    function safeBatchTransferFrom(address from, address to, uint256[] ids, uint256[] values, bytes data) external;
 }
 
 interface IERC165 {
@@ -103,6 +105,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     IWhitelist public whitelist;
     IWETH9 public weth9Token;
     uint public marketsNumber;
+    address private currentTrader;
     mapping(bytes32 => MarketData) public marketData;
 
     function initialize(
@@ -136,8 +139,8 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             conditionalTokens,
             weth9Token,
             _conditionIds,
-            20000000000000000,
-            whitelist,
+            0,
+            IWhitelist(address(0)),
             msg.value
         );
         marketData[_conditionId] = MarketData({
@@ -171,19 +174,19 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     }
 
     function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex) external view returns (uint) {
-        MarketData data = marketData[_conditionId];
+        MarketData storage data = marketData[_conditionId];
         require(data.exists, "NON_EXISTENT_CONDITION");
         return data.marketMaker.calcMarginalPrice(_outcomeIndex);
     }
 
     function getNetCost(int[] _outcomeTokenAmounts, bytes32 _conditionId) external view returns (int) {
-        MarketData data = marketData[_conditionId];
+        MarketData storage data = marketData[_conditionId];
         require(data.exists, "NON_EXISTENT_CONDITION");
         return data.marketMaker.calcNetCost(_outcomeTokenAmounts);
     }
 
     function getMarketFee(bytes32 _conditionId, uint _outcomeTokenCost) external view returns (uint) {
-        MarketData data = marketData[_conditionId];
+        MarketData storage data = marketData[_conditionId];
         require(data.exists, "NON_EXISTENT_CONDITION");
         return data.marketMaker.calcMarketFee(_outcomeTokenCost);
     }
@@ -192,7 +195,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             bytes32 _conditionId,
             int[] _outcomeTokenAmounts,
             int _collateralLimit) external payable auth(TRADE_ROLE) returns (int) {
-        MarketData data = marketData[_conditionId];
+        MarketData storage data = marketData[_conditionId];
         require(data.exists, "NON_EXISTENT_CONDITION");
         if(msg.value > 0) {
             // Even though it's not certain, if someone sends ETH, they
@@ -201,8 +204,9 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             weth9Token.deposit.value(msg.value)();
             weth9Token.approve(address(data.marketMaker), msg.value);
         }
+        currentTrader = msg.sender;
         int _netCost = data.marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
-        emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
+        emit Trade(_conditionId, _outcomeTokenAmounts, currentTrader, getTimestamp64());
         return _netCost;
     }
 
@@ -211,28 +215,30 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     }
 
     function onERC1155Received(
-        address operator,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes data
+        address _operator,
+        address _from,
+        uint256 _id,
+        uint256 _value,
+        bytes _data
     ) external returns(bytes4) {
+        conditionalTokens.safeTransferFrom(address(this), currentTrader, _id, _value, _data);
         return this.onERC1155Received.selector;
     }
 
     function onERC1155BatchReceived(
-            address operator,
-            address from,
-            uint256[] ids,
-            uint256[] values,
-            bytes data) external returns(bytes4) {
+            address _operator,
+            address _from,
+            uint256[] _ids,
+            uint256[] _values,
+            bytes _data) external returns(bytes4) {
+        conditionalTokens.safeBatchTransferFrom(address(this), currentTrader, _ids, _values, _data);
         return this.onERC1155BatchReceived.selector;
     }
 
     function closeMarket(
             uint[] _payouts,
             bytes32 _conditionId) external auth(CLOSE_MARKET_ROLE) returns (int) {
-        MarketData data = marketData[_conditionId];
+        MarketData storage data = marketData[_conditionId];
         require(data.exists, "NON_EXISTENT_CONDITION");
         require(data.oracle == msg.sender, "INVALID_ORACLE");
         data.marketMaker.close();

@@ -1,20 +1,17 @@
-const { assertEvent } = require("@aragon/contract-test-helpers/assertEvent");
+/* eslint-disable no-undef */
 const { newDao, newApp } = require("./helpers/dao");
 const { setOpenPermission } = require("./helpers/permissions");
-const { fromAscii, padRight } = require("web3-utils");
+const { toWei, asciiToHex } = require("web3-utils");
+const { newMarket } = require("./helpers/markets");
 
-// eslint-disable-next-line no-undef
 const PredictionMarketsApp = artifacts.require("PredictionMarketsApp.sol");
-// eslint-disable-next-line no-undef
-const AppDependencies = artifacts.require("AppDependencies.sol");
 
 // eslint-disable-next-line no-undef
 contract("PredictionMarketsApp", ([appManager, user]) => {
-    let dependencies, appBase, app;
+    let appBase, app;
 
     before("deploy base app", async () => {
-        dependencies = await AppDependencies.new();
-        appBase = await PredictionMarketsApp.new(dependencies.address);
+        appBase = await PredictionMarketsApp.new();
     });
 
     beforeEach("deploy dao and app", async () => {
@@ -34,23 +31,92 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             await app.CREATE_MARKET_ROLE(),
             appManager
         );
+        await setOpenPermission(
+            acl,
+            app.address,
+            await app.TRADE_ROLE(),
+            appManager
+        );
 
-        await app.initialize(dependencies.address);
+        const ConditionalTokens = artifacts.require("ConditionalTokens.sol");
+        const Fixed192x64Math = artifacts.require("Fixed192x64Math.sol");
+        const LMSRMarketMakerFactory = artifacts.require(
+            "LMSRMarketMakerFactory.sol"
+        );
+        const WETH9 = artifacts.require("WETH9.sol");
+        const Whitelist = artifacts.require("Whitelist.sol");
+
+        const fixed192x64MathInstance = await Fixed192x64Math.new({
+            from: appManager,
+        });
+        const conditionalTokensInstance = await ConditionalTokens.new({
+            from: appManager,
+        });
+        const weth9Instance = await WETH9.new({ from: appManager });
+        const whitelistInstance = await Whitelist.new({ from: appManager });
+
+        await LMSRMarketMakerFactory.link(fixed192x64MathInstance);
+        const lsmrMarketMakerFactoryInstance = await LMSRMarketMakerFactory.new(
+            { from: appManager }
+        );
+
+        await app.initialize(
+            conditionalTokensInstance.address,
+            lsmrMarketMakerFactoryInstance.address,
+            weth9Instance.address,
+            whitelistInstance.address
+        );
     });
 
     it("should guarantee a market creation to anyone", async () => {
-        const rawQuestionId = Date.now().toString();
-        const receipt = await app.createMarket(
+        await newMarket(
+            app,
             user,
-            fromAscii(rawQuestionId),
-            2,
-            fromAscii("test-question"),
-            [fromAscii("test-outcome-1"), fromAscii("test-outcome-2")],
-            { from: user }
+            "test-question",
+            ["test-outcome-1", "test-outcome-2"],
+            parseInt(Date.now() / 1000),
+            "1"
         );
-        assertEvent(receipt, "Test", {
-            creator: user,
-            questionId: padRight(fromAscii(rawQuestionId), 64),
+    });
+
+    it("should let a user perform a trade", async () => {
+        let receipt = await newMarket(
+            app,
+            user,
+            "test-question",
+            ["test-outcome-1", "test-outcome-2"],
+            parseInt(Date.now() / 1000),
+            "1"
+        );
+        const createMarketEvent = receipt.logs.find(
+            (log) => log.event === "CreateMarket"
+        );
+        if (!createMarketEvent) {
+            throw new Error("no create market event");
+        }
+        const { conditionId } = createMarketEvent.args;
+        const wantedShares = toWei("1");
+        const outcomeTokens = [wantedShares, "0"];
+        const netCost = await app.getNetCost(outcomeTokens, conditionId);
+        const fee = await app.getMarketFee(conditionId, netCost.toString());
+        const totalCost = netCost.add(fee);
+        await app.trade(conditionId, [wantedShares, "0"], toWei(totalCost), {
+            from: user,
+            value: totalCost.toString(),
         });
+        const collateralTokenAddress = await app.weth9Token();
+        const collectionId = await app.getCollectionId(
+            asciiToHex(""),
+            conditionId,
+            1
+        );
+        const positionId = await app.getPositionId(
+            collateralTokenAddress,
+            collectionId
+        );
+        assert.equal(
+            (await app.balanceOf(positionId, { from: user })).toString(),
+            wantedShares
+        );
     });
 });

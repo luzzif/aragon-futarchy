@@ -7,7 +7,7 @@ import { App } from "./views/app";
 
 const reducer = (state) => {
     if (!state) {
-        return { syncing: false, markets: [] };
+        return { syncing: true, markets: [] };
     }
     return state;
 };
