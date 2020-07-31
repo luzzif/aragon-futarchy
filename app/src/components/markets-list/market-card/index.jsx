@@ -24,12 +24,6 @@ const EllipsizedTextBox = styled(Box)`
     text-overflow: ellipsis;
 `;
 
-const Number = styled.span`
-    font-size: 16px;
-    font-weight: 700;
-    margin-right: 8px;
-`;
-
 const StandardText = styled.span`
     font-size: 16px;
 `;
@@ -42,20 +36,20 @@ const OutcomeFlex = styled(Flex)`
 
 export const MarketCard = ({
     conditionId,
-    number,
     creator,
     question,
     outcomes,
     endsAt,
     open,
+    redeemed,
     onClick,
 }) => {
     const theme = useTheme();
     const [pending, setPending] = useState();
 
     useEffect(() => {
-        setPending(open && new Date().getTime() < endsAt * 1000);
-    }, [endsAt, open]);
+        setPending(open && !redeemed && new Date().getTime() < endsAt * 1000);
+    }, [endsAt, open, redeemed]);
 
     const handleLocalClick = useCallback(() => {
         onClick(conditionId);
@@ -63,7 +57,6 @@ export const MarketCard = ({
 
     return (
         <PointerAuiBox
-            pending={pending}
             onClick={handleLocalClick}
             open={open}
             negativeColor={theme.negativeSurface}
@@ -79,7 +72,6 @@ export const MarketCard = ({
                     <IdentityBadge entity={creator} badgeOnly shorten />
                 </Box>
                 <EllipsizedTextBox mb="16px">
-                    <Number>#{number}:</Number>
                     <StandardText>{question}</StandardText>
                 </EllipsizedTextBox>
                 {outcomes.map((outcome, index) => {
@@ -109,19 +101,37 @@ export const MarketCard = ({
                         </OutcomeFlex>
                     );
                 })}
-                {
-                    <Flex flexDirection="column">
-                        <Box>
+                <Flex flexDirection="column">
+                    <Box maxHeight="24px">
+                        {pending && (
                             <Timer
                                 end={
-                                    pending
+                                    open && new Date().getTime() < endsAt * 1000
                                         ? new Date(endsAt * 1000)
                                         : new Date(0)
                                 }
                             />
-                        </Box>
-                    </Flex>
-                }
+                        )}
+                        {redeemed && (
+                            <span
+                                css={`
+                                    ${textStyle("body1")}
+                                `}
+                            >
+                                Positions redeemed
+                            </span>
+                        )}
+                        {!open && !redeemed && (
+                            <span
+                                css={`
+                                    ${textStyle("body2")}
+                                `}
+                            >
+                                Closed
+                            </span>
+                        )}
+                    </Box>
+                </Flex>
             </Flex>
         </PointerAuiBox>
     );

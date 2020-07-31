@@ -21,7 +21,6 @@ import { IconError } from "@aragon/ui";
 
 export const Market = ({
     onBack,
-    number,
     conditionId,
     questionId,
     question,
@@ -29,6 +28,7 @@ export const Market = ({
     outcomes,
     timestamp,
     endsAt,
+    redeemed,
     open,
     onTrade,
     onClose,
@@ -41,6 +41,7 @@ export const Market = ({
     const [luxonTimestamp, setLuxonTimestamp] = useState(null);
     const [tradeable, setTradeable] = useState(null);
     const [canSell, setCanSell] = useState(new BigNumber("0"));
+    const [redeemable, setRedeemable] = useState(false);
     const [buying, setBuying] = useState(false);
     const [selling, setSelling] = useState(false);
     const [closing, setClosing] = useState(false);
@@ -60,6 +61,16 @@ export const Market = ({
         setCanSell(new BigNumber(fromWei(checked.balance)));
     }, [checked, endsAt, outcomes]);
 
+    useEffect(() => {
+        setRedeemable(
+            !open &&
+                !redeemed &&
+                outcomes.find((outcome) =>
+                    new BigNumber(outcome.balance).isGreaterThan("0")
+                )
+        );
+    }, [checked, endsAt, open, outcomes, redeemed]);
+
     const handleRadioChange = useCallback(
         (index) => {
             setChecked(outcomes[index]);
@@ -78,6 +89,7 @@ export const Market = ({
     const handleTradingSidePanelClose = useCallback(() => {
         setBuying(false);
         setSelling(false);
+        setSharesAmount("");
     }, []);
 
     const handleSharesAmountChange = useCallback(
@@ -149,6 +161,13 @@ export const Market = ({
         [conditionId, onClose, outcomes, questionId]
     );
 
+    const handleRedeemPositions = useCallback(() => {
+        api.redeemPositions(
+            outcomes.map((outcome, index) => index + 1),
+            conditionId
+        ).subscribe();
+    }, [api, conditionId, outcomes]);
+
     return (
         <>
             <Flex flexWrap="wrap" pt="16px" width="100%" flexDirection="column">
@@ -163,16 +182,6 @@ export const Market = ({
                             flexDirection="column"
                             p="40px"
                         >
-                            <Box mb="24px">
-                                <span
-                                    css={`
-                                    ${textStyle("title1")}
-                                    color: ${theme.content};
-                                `}
-                                >
-                                    Prediction market #{number}
-                                </span>
-                            </Box>
                             <Box
                                 mb="8px"
                                 css={`
@@ -281,10 +290,18 @@ export const Market = ({
                                 const prettyPrice = new BigNumber(
                                     outcome.price
                                 );
+                                const prettyBalance = new BigNumber(
+                                    fromWei(outcome.balance)
+                                );
+                                const resultIcon =
+                                    !open && outcome.correct ? (
+                                        <IconCheck />
+                                    ) : (
+                                        <IconError />
+                                    );
                                 return (
                                     <Flex
                                         key={index}
-                                        height="40px"
                                         alignItems="center"
                                         width="100%"
                                         mb="16px"
@@ -312,7 +329,6 @@ export const Market = ({
                                                 css={`
                                                     ${textStyle("label2")}
                                                 `}
-                                                mb="4px"
                                             >
                                                 {outcome.label} (
                                                 {prettyPrice
@@ -321,10 +337,31 @@ export const Market = ({
                                                     .toString()}
                                                 %)
                                             </Box>
-                                            <Box>
-                                                <ProgressBar
-                                                    value={prettyPrice.toNumber()}
-                                                />
+                                            <Flex
+                                                height="24px"
+                                                width="100%"
+                                                alignItems="center"
+                                            >
+                                                <Box width="100%">
+                                                    <ProgressBar
+                                                        value={prettyPrice.toNumber()}
+                                                    />
+                                                </Box>
+                                                {!open && (
+                                                    <Box ml="16px">
+                                                        {resultIcon}
+                                                    </Box>
+                                                )}
+                                            </Flex>
+                                            <Box
+                                                css={`
+                                                    ${textStyle("label2")}
+                                                `}
+                                            >
+                                                Balance:{" "}
+                                                {prettyBalance
+                                                    .decimalPlaces(4)
+                                                    .toString()}
                                             </Box>
                                         </Flex>
                                     </Flex>
@@ -349,11 +386,25 @@ export const Market = ({
                             )}
                         </Flex>
                     </AuiBox>
-                    {tradeable && connectedAccount === creator && (
+                    {((tradeable && connectedAccount === creator) ||
+                        redeemable) && (
                         <AuiBox width="100%" heading="Actions" padding={20}>
-                            <Button mode="negative" onClick={handleCloseMarket}>
-                                Close market
-                            </Button>
+                            {tradeable && (
+                                <Button
+                                    mode="negative"
+                                    onClick={handleCloseMarket}
+                                >
+                                    Close market
+                                </Button>
+                            )}
+                            {redeemable && (
+                                <Button
+                                    mode="positive"
+                                    onClick={handleRedeemPositions}
+                                >
+                                    Redeem positions
+                                </Button>
+                            )}
                         </AuiBox>
                     )}
                 </Box>

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import Main from "@aragon/ui/dist/Main";
 import Header from "@aragon/ui/dist/Header";
 import Button from "@aragon/ui/dist/Button";
@@ -14,7 +14,22 @@ export const App = () => {
     const { appState, api, connectedAccount } = useAragonApi();
     const { syncing, markets } = appState;
     const [newMarketSidePanelOpen, setNewMarketSidePanelOpen] = useState(false);
+    const [selectedMarketConditionId, setSelectedMarketConditionId] = useState(
+        null
+    );
     const [selectedMarket, setSelectedMarket] = useState(null);
+
+    useEffect(() => {
+        if (markets && selectedMarketConditionId) {
+            setSelectedMarket(
+                markets.find(
+                    (market) => market.conditionId === selectedMarketConditionId
+                )
+            );
+        } else {
+            setSelectedMarket(null);
+        }
+    }, [markets, selectedMarketConditionId]);
 
     const handleNewMarketOpen = useCallback(() => {
         setNewMarketSidePanelOpen(true);
@@ -47,24 +62,21 @@ export const App = () => {
         [api, connectedAccount]
     );
 
-    const handleMarketClick = useCallback(
-        (conditionId) => {
-            setSelectedMarket(
-                markets.find((market) => market.conditionId === conditionId)
-            );
-        },
-        [markets]
-    );
+    const handleMarketClick = useCallback((conditionId) => {
+        setSelectedMarketConditionId(conditionId);
+    }, []);
 
     const handleMarketBack = useCallback(() => {
-        setSelectedMarket(null);
+        setSelectedMarketConditionId(null);
     }, []);
 
     const handleTrade = useCallback(
         (conditionId, outcomeTokensAmount, cost, selling) => {
             api.trade(
                 conditionId,
-                outcomeTokensAmount.map((amount) => toWei(amount.toString())),
+                outcomeTokensAmount.map((amount) =>
+                    toWei(amount.toString(), "ether")
+                ),
                 toWei(cost.toString(), "ether"),
                 {
                     from: connectedAccount,

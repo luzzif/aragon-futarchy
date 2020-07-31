@@ -23,7 +23,11 @@ const removeTrailingZeroes = (string) => {
     return string.substring(0, string.length - numberOfTrailingZeroes);
 };
 
-const getUpdatedOutcomesInformation = async (conditionId, outcomeLabels) => {
+const getUpdatedOutcomesInformation = async (
+    conditionId,
+    outcomeLabels,
+    results
+) => {
     const outcomes = [];
     const collateralTokenAddress = await app.call("weth9Token").toPromise();
     for (let i = 0; i < outcomeLabels.length; i++) {
@@ -43,6 +47,7 @@ const getUpdatedOutcomesInformation = async (conditionId, outcomeLabels) => {
             price: new BigNumber(price)
                 .dividedBy(new BigNumber("2").pow("64"))
                 .toString(),
+            correct: results && results[i] === "1",
         });
     }
     return outcomes;
@@ -71,18 +76,25 @@ const handleCreateMarket = async (event) => {
         timestamp: parseInt(timestamp),
         endsAt: parseInt(endsAt),
         open: true,
+        redeemed: false,
         questionId,
     };
 };
 
-const handleCloseMarket = (event, markets) => {
+const handleCloseMarket = async (event, markets) => {
     const { returnValues } = event;
-    const { conditionId } = returnValues;
+    const { conditionId, results } = returnValues;
     const marketIndex = markets.findIndex(
         (market) => market.conditionId === conditionId
     );
     if (marketIndex >= 0) {
         markets[marketIndex].open = false;
+        markets[marketIndex].results = results;
+        markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
+            conditionId,
+            markets[marketIndex].outcomes.map((outcome) => outcome.label),
+            results
+        );
     }
     return [...markets];
 };
@@ -96,6 +108,21 @@ const handleTrade = async (event, markets) => {
     markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
         conditionId,
         markets[marketIndex].outcomes.map((outcome) => outcome.label)
+    );
+    return [...markets];
+};
+
+const handleRedeemPositions = async (event, markets) => {
+    const { returnValues } = event;
+    const { conditionId } = returnValues;
+    const marketIndex = markets.findIndex(
+        (market) => market.conditionId === conditionId
+    );
+    markets[marketIndex].redeemed = true;
+    markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
+        conditionId,
+        markets[marketIndex].outcomes.map((outcome) => outcome.label),
+        markets[marketIndex].results
     );
     return [...markets];
 };
@@ -121,13 +148,19 @@ app.store(async (state, action) => {
         case "CloseMarket": {
             return {
                 ...state,
-                markets: handleCloseMarket(action, state.markets || []),
+                markets: await handleCloseMarket(action, state.markets || []),
             };
         }
         case "Trade": {
             return {
                 ...state,
                 markets: await handleTrade(action, state.markets),
+            };
+        }
+        case "RedeemPositions": {
+            return {
+                ...state,
+                markets: await handleRedeemPositions(action, state.markets),
             };
         }
         default: {

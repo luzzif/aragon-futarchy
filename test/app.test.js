@@ -85,7 +85,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         );
     });
 
-    it("should let a user perform a buy", async () => {
+    it.only("should let a user perform a buy", async () => {
         let receipt = await newMarket(
             app,
             user,
@@ -101,7 +101,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             throw new Error("no create market event");
         }
         const { conditionId } = createMarketEvent.args;
-        const wantedShares = toWei("1");
+        const wantedShares = toWei("0.123");
         const outcomeTokens = [wantedShares, "0"];
         const netCost = await app.getNetCost(outcomeTokens, conditionId);
         const fee = await app.getMarketFee(conditionId, netCost.toString());
@@ -214,7 +214,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         });
     });
 
-    it("shouldn let a user close a market", async () => {
+    it("should let a user close a market", async () => {
         let receipt = await newMarket(
             app,
             user,
@@ -234,6 +234,56 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             from: user,
         });
         await app.closeMarket(["1", "0"], conditionId, questionId, {
+            from: user,
+        });
+    });
+
+    it("should let a user redeem their positions", async () => {
+        let receipt = await newMarket(
+            app,
+            user,
+            "test-question",
+            ["test-outcome-1", "test-outcome-2"],
+            parseInt(Date.now() / 1000),
+            "1"
+        );
+        const createMarketEvent = receipt.logs.find(
+            (log) => log.event === "CreateMarket"
+        );
+        if (!createMarketEvent) {
+            throw new Error("no create market event");
+        }
+        const { conditionId } = createMarketEvent.args;
+        const wantedShares = toWei("1");
+        const outcomeTokens = [wantedShares, "0"];
+        const netCost = await app.getNetCost(outcomeTokens, conditionId);
+        const fee = await app.getMarketFee(conditionId, netCost.toString());
+        const totalCost = netCost.add(fee);
+        await app.trade(conditionId, [wantedShares, "0"], toWei(totalCost), {
+            from: user,
+            value: totalCost.toString(),
+        });
+        const collateralTokenAddress = await app.weth9Token();
+        const collectionId = await app.getCollectionId(
+            asciiToHex(""),
+            conditionId,
+            1
+        );
+        const positionId = await app.getPositionId(
+            collateralTokenAddress,
+            collectionId
+        );
+        const onchainBalance = (
+            await app.balanceOf(positionId, { from: user })
+        ).toString();
+        assert.equal(onchainBalance, wantedShares);
+        const { questionId } = await app.marketData(conditionId, {
+            from: user,
+        });
+        await app.closeMarket(["1", "0"], conditionId, questionId, {
+            from: user,
+        });
+        await app.redeemPositions(["1", "2"], conditionId, {
             from: user,
         });
     });

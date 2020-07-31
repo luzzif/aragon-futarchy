@@ -22,7 +22,8 @@ export const CloseSidePanel = ({ open, outcomes, onConfirm, onClose }) => {
 
     const handleLocalConfirm = useCallback(() => {
         onConfirm(selectedOutcome);
-    }, [onConfirm, selectedOutcome]);
+        onClose();
+    }, [onClose, onConfirm, selectedOutcome]);
 
     return (
         <SidePanel

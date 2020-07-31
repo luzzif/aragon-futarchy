@@ -40,6 +40,7 @@ export const TradingSidePanel = ({
     const handleTrade = useCallback(() => {
         onTrade(collateral);
         onClose();
+        setCollateral("0");
     }, [collateral, onClose, onTrade]);
 
     return (
