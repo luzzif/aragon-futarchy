@@ -50,7 +50,6 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             "LMSRMarketMakerFactory.sol"
         );
         const WETH9 = artifacts.require("WETH9.sol");
-        const Whitelist = artifacts.require("Whitelist.sol");
 
         const fixed192x64MathInstance = await Fixed192x64Math.new({
             from: appManager,
@@ -59,7 +58,6 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             from: appManager,
         });
         const weth9Instance = await WETH9.new({ from: appManager });
-        const whitelistInstance = await Whitelist.new({ from: appManager });
 
         await LMSRMarketMakerFactory.link(fixed192x64MathInstance);
         const lsmrMarketMakerFactoryInstance = await LMSRMarketMakerFactory.new(
@@ -69,8 +67,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         await app.initialize(
             conditionalTokensInstance.address,
             lsmrMarketMakerFactoryInstance.address,
-            weth9Instance.address,
-            whitelistInstance.address
+            weth9Instance.address
         );
     });
 
@@ -85,7 +82,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         );
     });
 
-    it.only("should let a user perform a buy", async () => {
+    it("should let a user perform a buy", async () => {
         let receipt = await newMarket(
             app,
             user,
@@ -106,9 +103,9 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         const netCost = await app.getNetCost(outcomeTokens, conditionId);
         const fee = await app.getMarketFee(conditionId, netCost.toString());
         const totalCost = netCost.add(fee);
-        await app.trade(conditionId, [wantedShares, "0"], toWei(totalCost), {
+        await app.buy(conditionId, [wantedShares, "0"], totalCost, {
             from: user,
-            value: totalCost.toString(),
+            value: totalCost,
         });
         const collateralTokenAddress = await app.weth9Token();
         const collectionId = await app.getCollectionId(
@@ -126,7 +123,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         );
     });
 
-    it("should let a user perform a sell", async () => {
+    it.only("should let a user perform a sell", async () => {
         let receipt = await newMarket(
             app,
             user,
@@ -147,7 +144,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         const netCost = await app.getNetCost(outcomeTokens, conditionId);
         const fee = await app.getMarketFee(conditionId, netCost.toString());
         const totalCost = netCost.add(fee);
-        await app.trade(conditionId, [wantedShares, "0"], toWei(totalCost), {
+        await app.buy(conditionId, [wantedShares, "0"], totalCost.toString(), {
             from: user,
             value: totalCost.toString(),
         });
@@ -165,7 +162,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             await app.balanceOf(positionId, { from: user })
         ).toString();
         assert.equal(onchainBalance, wantedShares);
-        await app.trade(conditionId, [`-${onchainBalance}`, "0"], "0", {
+        await app.sell(conditionId, [`-${onchainBalance}`, "0"], "0", {
             from: user,
         });
     });

@@ -1,17 +1,19 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { Field, Button, TextInput, IconRemove, DataView } from "@aragon/ui";
+import React, { useState, useCallback } from "react";
+import { Field, Button, TextInput, IconRemove } from "@aragon/ui";
 import SidePanel from "@aragon/ui/dist/SidePanel";
 import styled from "styled-components";
-import BigNumber from "bignumber.js";
 import { DateTime, Duration } from "luxon";
 import DateRangePicker from "@aragon/ui/dist/DateRangePicker";
+import { Box, Flex } from "reflexbox";
+import { useTheme } from "@aragon/ui/dist/Theme";
 
 const Margin = styled.div`
     height: 8px;
 `;
 
-const EmptyStatusText = styled.span`
-    font-size: 16px;
+const OutcomesContainer = styled(Flex)`
+    border-radius: 4px;
+    border: solid 1px #dde4e9;
 `;
 
 const WideDateRangePicker = styled(DateRangePicker)`
@@ -19,24 +21,14 @@ const WideDateRangePicker = styled(DateRangePicker)`
 `;
 
 export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
+    const theme = useTheme();
+
     const [question, setQuestion] = useState("");
     const [outcome, setOutcome] = useState("");
     const [outcomes, setOutcomes] = useState([]);
-    const [outcomeProbability, setOutcomeProbability] = useState(0);
     const [startsAt] = useState(new Date());
     const [endsAt, setEndsAt] = useState(null);
     const [funding, setFunding] = useState("");
-
-    useEffect(() => {
-        if (outcomes && outcomes.length > 0) {
-            setOutcomeProbability(
-                new BigNumber("100")
-                    .dividedBy(outcomes.length)
-                    .decimalPlaces(2)
-                    .toString()
-            );
-        }
-    }, [outcomes]);
 
     const handleQuestionChange = useCallback((event) => {
         setQuestion(event.target.value);
@@ -68,9 +60,10 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome("");
     }, [outcomes, outcome]);
 
-    const getOutcomeRemovalHandler = () => (index) => {
-        outcomes.splice(index, 1);
-        setOutcomes([...outcomes]);
+    const getOutcomeRemovalHandler = (outcome) => () => {
+        setOutcomes(
+            outcomes.filter((mappedOutcome) => mappedOutcome !== outcome)
+        );
     };
 
     const resetState = () => {
@@ -79,7 +72,6 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcomes([]);
         setFunding("");
         setEndsAt(null);
-        setOutcomeProbability(0);
     };
 
     const handleCreate = useCallback(() => {
@@ -121,22 +113,36 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                 />
             </Field>
             <Field label="Added outcomes">
-                <DataView
-                    fields={["Outcome", "Probability"]}
-                    entries={outcomes}
-                    entriesPerPage={-1}
-                    renderEntry={(outcome) => [outcome, outcomeProbability]}
-                    renderEntryActions={(outcome, index) => (
-                        <Button
-                            icon={<IconRemove />}
-                            mode="negative"
-                            onClick={getOutcomeRemovalHandler(index)}
-                        />
+                <OutcomesContainer flexDirection="column">
+                    {outcomes && outcomes.length > 0 ? (
+                        outcomes.map((outcome, index) => (
+                            <Flex
+                                key={outcome + index}
+                                px="16px"
+                                py="8px"
+                                width="100%"
+                                alignItems="center"
+                            >
+                                <Box flexGrow="2">{outcome}</Box>
+                                <Box>
+                                    <IconRemove
+                                        css={`
+                                            color: ${theme.negative};
+                                            cursor: pointer;
+                                        `}
+                                        onClick={getOutcomeRemovalHandler(
+                                            outcome
+                                        )}
+                                    ></IconRemove>
+                                </Box>
+                            </Flex>
+                        ))
+                    ) : (
+                        <Box px="16px" py="8px">
+                            No outcomes added yet
+                        </Box>
                     )}
-                    emptyState={
-                        <EmptyStatusText>No outcomes added yet</EmptyStatusText>
-                    }
-                />
+                </OutcomesContainer>
             </Field>
             <Field label="Initial ETH funding">
                 <TextInput
@@ -159,7 +165,11 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                 wide
                 label="Create"
                 disabled={
-                    !question || !outcomes || outcomes.length < 2 || !funding
+                    !question ||
+                    !outcomes ||
+                    outcomes.length < 2 ||
+                    !funding ||
+                    !endsAt
                 }
                 onClick={handleCreate}
             />

@@ -72,23 +72,36 @@ export const App = () => {
 
     const handleTrade = useCallback(
         (conditionId, outcomeTokensAmount, cost, selling) => {
-            api.trade(
-                conditionId,
-                outcomeTokensAmount.map((amount) =>
-                    toWei(amount.toString(), "ether")
-                ),
-                toWei(cost.toString(), "ether"),
-                {
-                    from: connectedAccount,
-                    value: selling ? 0 : toWei(cost.toString(), "ether"),
-                }
-            ).subscribe(() => {}, console.error);
+            if (selling) {
+                api.sell(
+                    conditionId,
+                    outcomeTokensAmount.map((amount) =>
+                        toWei(amount.toString(), "ether")
+                    ),
+                    "0",
+                    { from: connectedAccount }
+                ).subscribe(() => {}, console.error);
+            } else {
+                api.buy(
+                    conditionId,
+                    outcomeTokensAmount.map((amount) =>
+                        toWei(amount.toString(), "ether")
+                    ),
+                    toWei(cost.toString(), "ether"),
+                    {
+                        from: connectedAccount,
+                        value: toWei(cost.toString(), "ether"),
+                    }
+                ).subscribe(() => {}, console.error);
+            }
+            api.call("weth9Token").subscribe(console.log);
         },
         [api, connectedAccount]
     );
 
     const handleClose = useCallback(
         (conditionId, questionId, payouts) => {
+            api.call("weth9Token").subscribe(console.log);
             api.closeMarket(
                 payouts,
                 conditionId,

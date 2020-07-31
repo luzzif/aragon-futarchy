@@ -61,6 +61,12 @@ export const MarketCard = ({
             open={open}
             negativeColor={theme.negativeSurface}
             padding={16}
+            css={`
+                height: 256px;
+                > div {
+                    height: 100%;
+                }
+            `}
         >
             <Flex
                 width="100%"
@@ -74,15 +80,10 @@ export const MarketCard = ({
                 <EllipsizedTextBox mb="16px">
                     <StandardText>{question}</StandardText>
                 </EllipsizedTextBox>
-                {outcomes.map((outcome, index) => {
+                {outcomes.slice(0, 2).map((outcome, index) => {
                     const prettyPrice = new BigNumber(outcome.price);
                     return (
-                        <OutcomeFlex
-                            key={index}
-                            height="40px"
-                            flexDirection="column"
-                            mb="8px"
-                        >
+                        <OutcomeFlex key={index} flexDirection="column">
                             <Box
                                 css={`
                                     ${textStyle("label2")}
@@ -101,7 +102,14 @@ export const MarketCard = ({
                         </OutcomeFlex>
                     );
                 })}
-                <Flex flexDirection="column">
+                <Box mb="16px" height="24px">
+                    {outcomes && outcomes.length > 2 && "More outcomes hidden"}
+                </Box>
+                <Flex
+                    flexDirection="column"
+                    height="100%"
+                    justifyContent="flex-end"
+                >
                     <Box maxHeight="24px">
                         {pending && (
                             <Timer
@@ -116,6 +124,7 @@ export const MarketCard = ({
                             <span
                                 css={`
                                     ${textStyle("body1")}
+                                    color: ${theme.negative};
                                 `}
                             >
                                 Positions redeemed

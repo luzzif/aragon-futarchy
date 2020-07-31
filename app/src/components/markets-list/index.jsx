@@ -6,16 +6,16 @@ import { Warning } from "../warning";
 export const MarketsList = ({ markets, onMarketClick }) => {
     return (
         <Flex flexDirection="column">
-            <Box mb="16px">
+            <Box mb="24px">
                 <Warning />
             </Box>
-            <Flex flexWrap="wrap" width="100%" m={-3}>
+            <Flex flexWrap="wrap" width="100%">
                 {markets.map((market) => {
                     return (
                         <Box
                             width={[1, 1 / 2, 1 / 3]}
                             key={market.conditionId}
-                            p={3}
+                            p="16px"
                         >
                             <MarketCard {...market} onClick={onMarketClick} />
                         </Box>

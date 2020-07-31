@@ -184,38 +184,46 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         return marketData[_conditionId].marketMaker.calcMarketFee(_outcomeTokenCost);
     }
 
-    function trade(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
+    function buy(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
             external
             payable
             auth(TRADE_ROLE)
             requiresMarketData(_conditionId)
             returns (int) {
-        require(getTimestamp64() < marketData[_conditionId].endsAt, "EXPIRED_MARKET");
-        currentTrader = msg.sender;
+        require(msg.value >= uint(_collateralLimit), "NOT_ENOUGH_COLLATERAL");
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
-        // FIXME: if the user sells and sends ETH, they can sell everything, even others' assets
-        if(msg.value > 0) {
-            // Even though it's not certain, if someone sends ETH, they
-            // probably want to buy tokens, so perform ETH -> WETH conversion
-            // and set allowance accordingly
-            weth9Token.deposit.value(msg.value)();
-            weth9Token.approve(address(_marketMaker), msg.value);
-        } else {
-            // checking if the user wants to sell more than what they have
-            for(uint _i; _i < _outcomeTokenAmounts.length; _i++) {
-                int _outcomeTokenAmount = _outcomeTokenAmounts[_i];
-                if(_outcomeTokenAmount < 0) {
-                    bytes32 _collectionId = this.getCollectionId(bytes32(""), _conditionId, _i + 1);
-                    uint _positionId = this.getPositionId(weth9Token, _collectionId);
-                    uint _currentHolding = tokenHoldings[currentTrader][_positionId];
-                    require(_currentHolding >= uint(_outcomeTokenAmount * -1), "INSUFFICIENT_BALANCE");
-                    tokenHoldings[currentTrader][_positionId] = _currentHolding - uint(_outcomeTokenAmount * -1);
-                }
-            }
-            // can update the price here, since if an error occurs down the line, a revert will happen
+        weth9Token.deposit.value(msg.value)();
+        weth9Token.approve(address(_marketMaker), msg.value);
+        currentTrader = msg.sender;
+        for(uint _i; _i < _outcomeTokenAmounts.length; _i++) {
+            uint _positionId = this.getPositionId(
+                weth9Token,
+                this.getCollectionId(bytes32(""), _conditionId, _i + 1)
+            );
+            tokenHoldings[currentTrader][_positionId] = tokenHoldings[currentTrader][_positionId] + uint(_outcomeTokenAmounts[_i]);
+        }
+        _marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
+        emit Trade(_conditionId, _outcomeTokenAmounts, currentTrader, getTimestamp64());
+    }
+
+    function sell(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
+            external
+            payable
+            auth(TRADE_ROLE)
+            requiresMarketData(_conditionId)
+            returns (int) {
+        for(uint _i; _i < _outcomeTokenAmounts.length; _i++) {
+            uint _positionId = this.getPositionId(
+                weth9Token,
+                this.getCollectionId(bytes32(""), _conditionId, _i + 1)
+            );
+            require(tokenHoldings[currentTrader][_positionId] >= uint(_outcomeTokenAmounts[_i] * -1), "INSUFFICIENT_BALANCE");
+            tokenHoldings[currentTrader][_positionId] = tokenHoldings[currentTrader][_positionId] - uint(_outcomeTokenAmounts[_i] * -1);
         }
         emit Trade(_conditionId, _outcomeTokenAmounts, currentTrader, getTimestamp64());
-        return _marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
+        int _netCost = marketData[_conditionId].marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
+        require(_netCost < 0, "INCONSISTENT_NET_COST");
+        weth9Token.transfer(msg.sender, uint(_netCost * - 1));
     }
 
     function supportsInterface(bytes4 interfaceId) external view returns (bool) {
@@ -223,16 +231,13 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     }
 
     function onERC1155Received(address, address, uint256 _id, uint256 _value, bytes) external returns(bytes4) {
-        uint _currentBalance = tokenHoldings[currentTrader][_id];
-        tokenHoldings[currentTrader][_id] = _currentBalance + _value;
+        tokenHoldings[currentTrader][_id] = tokenHoldings[currentTrader][_id] + _value;
         return this.onERC1155Received.selector;
     }
 
     function onERC1155BatchReceived(address, address, uint256[] _ids, uint256[] _values, bytes) external returns(bytes4) {
         for(uint _i; _i < _ids.length; _i++) {
-            uint _id = _ids[_i];
-            uint _currentBalance = tokenHoldings[currentTrader][_id];
-            tokenHoldings[currentTrader][_id] = _currentBalance + _values[_i];
+            tokenHoldings[currentTrader][_ids[_i]] = tokenHoldings[currentTrader][_ids[_i]] + _values[_i];
         }
         return this.onERC1155BatchReceived.selector;
     }
