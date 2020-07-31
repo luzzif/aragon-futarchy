@@ -101,6 +101,9 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         initialized();
     }
 
+    /**
+      * @notice Create a prediction market
+      */
     function createMarket(
             address _oracle,
             bytes32 _questionId,
@@ -172,6 +175,9 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         return marketData[_conditionId].marketMaker.calcMarketFee(_outcomeTokenCost);
     }
 
+    /**
+      * @notice Buy outcome shares
+      */
     function buy(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
             external
             payable
@@ -193,6 +199,9 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
     }
 
+    /**
+      * @notice Sell outcome shares
+      */
     function sell(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
             external
             payable
@@ -225,6 +234,9 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         return this.onERC1155BatchReceived.selector;
     }
 
+    /**
+      * @notice Close a prediction market
+      */
     function closeMarket(
             uint[] _payouts,
             bytes32 _conditionId,
@@ -240,6 +252,9 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         emit CloseMarket(_conditionId, _payouts, getTimestamp64(), _marginalPricesAtClosure);
     }
 
+    /**
+      * @notice Redeem position on a closed prediction market
+      */
     function redeemPositions(uint[] _indexSets, bytes32 _conditionId) external {
         conditionalTokens.redeemPositions(weth9Token, bytes32(""), _conditionId, _indexSets);
         uint totalPayout = 0;
