@@ -77,7 +77,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 1000,
             "1"
         );
     });
@@ -88,7 +88,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 1000,
             "1"
         );
         const createMarketEvent = receipt.logs.find(
@@ -123,13 +123,13 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         );
     });
 
-    it.only("should let a user perform a sell", async () => {
+    it("should let a user perform a sell", async () => {
         let receipt = await newMarket(
             app,
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 1000,
             "1"
         );
         const createMarketEvent = receipt.logs.find(
@@ -173,7 +173,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 1000,
             "1"
         );
         const createMarketEvent = receipt.logs.find(
@@ -188,7 +188,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         const netCost = await app.getNetCost(outcomeTokens, conditionId);
         const fee = await app.getMarketFee(conditionId, netCost.toString());
         const totalCost = netCost.add(fee);
-        await app.trade(conditionId, [wantedShares, "0"], toWei(totalCost), {
+        await app.buy(conditionId, [wantedShares, "0"], totalCost.toString(), {
             from: user,
             value: totalCost.toString(),
         });
@@ -206,9 +206,21 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             await app.balanceOf(positionId, { from: user })
         ).toString();
         assert.equal(onchainBalance, wantedShares);
-        await app.trade(conditionId, [`-${onchainBalance + 10000}`, "0"], "0", {
-            from: user,
-        });
+        try {
+            await app.sell(
+                conditionId,
+                [`-${onchainBalance + 10000}`, "0"],
+                "0",
+                {
+                    from: user,
+                }
+            );
+        } catch (error) {
+            assert.equal(
+                "Returned error: VM Exception while processing transaction: revert INSUFFICIENT_BALANCE",
+                error.message
+            );
+        }
     });
 
     it("should let a user close a market", async () => {
@@ -217,7 +229,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 1000,
             "1"
         );
         const createMarketEvent = receipt.logs.find(
@@ -241,7 +253,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 1000,
             "1"
         );
         const createMarketEvent = receipt.logs.find(
@@ -256,7 +268,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         const netCost = await app.getNetCost(outcomeTokens, conditionId);
         const fee = await app.getMarketFee(conditionId, netCost.toString());
         const totalCost = netCost.add(fee);
-        await app.trade(conditionId, [wantedShares, "0"], toWei(totalCost), {
+        await app.buy(conditionId, [wantedShares, "0"], totalCost.toString(), {
             from: user,
             value: totalCost.toString(),
         });

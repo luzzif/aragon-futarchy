@@ -185,6 +185,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             requiresMarketData(_conditionId)
             returns (int) {
         require(msg.value >= uint(_collateralLimit), "NOT_ENOUGH_COLLATERAL");
+        require(marketData[_conditionId].endsAt >= getTimestamp64(), "EXPIRED_MARKET");
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
         weth9Token.deposit.value(msg.value)();
         weth9Token.approve(address(_marketMaker), msg.value);
@@ -208,6 +209,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             auth(TRADE_ROLE)
             requiresMarketData(_conditionId)
             returns (int) {
+        require(marketData[_conditionId].endsAt >= getTimestamp64(), "EXPIRED_MARKET");
         for(uint _i; _i < _outcomeTokenAmounts.length; _i++) {
             uint _positionId = this.getPositionId(
                 weth9Token,
