@@ -10,8 +10,6 @@ interface IConditionalTokens {
     function getPositionId(IERC20 collateralToken, bytes32 collectionId) external view returns (uint);
     function balanceOf(address owner, uint positionId) external view returns (uint);
     function reportPayouts(bytes32 questionId, uint[] payouts) external;
-    function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes data) external;
-    function safeBatchTransferFrom(address from, address to, uint256[] ids, uint256[] values, bytes data) external;
     function setApprovalForAll(address operator, bool approved) external;
     function redeemPositions(IERC20 collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint[] indexSets) external;
     function payoutNumerators(bytes32 conditionId, uint256 index) external view returns(uint256);
@@ -36,12 +34,8 @@ interface ILMSRMarketMaker {
 }
 
 interface IERC20 {
-    function totalSupply() external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
     function transfer(address recipient, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
 contract IWETH9 is IERC20 {
@@ -68,12 +62,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     bytes32 constant public CLOSE_MARKET_ROLE = keccak256("CLOSE_MARKET_ROLE");
 
     /// Events
-    event Trade(
-        bytes32 conditionId,
-        int[] outcomeTokenAmounts,
-        address transactor,
-        uint timestamp
-    );
+    event Trade(bytes32 conditionId, int[] outcomeTokenAmounts, address transactor, uint timestamp);
     event CreateMarket(bytes32 conditionId, bytes32[] outcomes);
     event CloseMarket(bytes32 conditionId, uint[] results, uint timestamp);
     event RedeemPositions(address redeemer, bytes32 conditionId);
@@ -82,7 +71,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         ILMSRMarketMaker marketMaker;
         bytes32 questionId;
         address creator;
-        bytes32 question;
+        string question;
         address oracle;
         uint timestamp;
         uint endsAt;
@@ -92,7 +81,6 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     IConditionalTokens public conditionalTokens;
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
     IWETH9 public weth9Token;
-    address private currentTrader;
     mapping(bytes32 => MarketData) public marketData;
     mapping(address => mapping(uint => uint)) public tokenHoldings;
     mapping(address => mapping(bytes32 => bool)) public redeemedPositions;
@@ -117,7 +105,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             address _oracle,
             bytes32 _questionId,
             uint _outcomesAmount,
-            bytes32 _question,
+            string _question,
             bytes32[] _outcomes,
             uint endsAt) external payable auth(CREATE_MARKET_ROLE) {
         conditionalTokens.prepareCondition(address(this), _questionId, _outcomesAmount);
@@ -194,16 +182,15 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
         weth9Token.deposit.value(msg.value)();
         weth9Token.approve(address(_marketMaker), msg.value);
-        currentTrader = msg.sender;
         for(uint _i; _i < _outcomeTokenAmounts.length; _i++) {
             uint _positionId = this.getPositionId(
                 weth9Token,
                 this.getCollectionId(bytes32(""), _conditionId, _i + 1)
             );
-            tokenHoldings[currentTrader][_positionId] = tokenHoldings[currentTrader][_positionId] + uint(_outcomeTokenAmounts[_i]);
+            tokenHoldings[msg.sender][_positionId] = tokenHoldings[msg.sender][_positionId] + uint(_outcomeTokenAmounts[_i]);
         }
         _marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
-        emit Trade(_conditionId, _outcomeTokenAmounts, currentTrader, getTimestamp64());
+        emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
     }
 
     function sell(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
@@ -217,10 +204,10 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
                 weth9Token,
                 this.getCollectionId(bytes32(""), _conditionId, _i + 1)
             );
-            require(tokenHoldings[currentTrader][_positionId] >= uint(_outcomeTokenAmounts[_i] * -1), "INSUFFICIENT_BALANCE");
-            tokenHoldings[currentTrader][_positionId] = tokenHoldings[currentTrader][_positionId] - uint(_outcomeTokenAmounts[_i] * -1);
+            require(tokenHoldings[msg.sender][_positionId] >= uint(_outcomeTokenAmounts[_i] * -1), "INSUFFICIENT_BALANCE");
+            tokenHoldings[msg.sender][_positionId] = tokenHoldings[msg.sender][_positionId] - uint(_outcomeTokenAmounts[_i] * -1);
         }
-        emit Trade(_conditionId, _outcomeTokenAmounts, currentTrader, getTimestamp64());
+        emit Trade(_conditionId, _outcomeTokenAmounts, msg.sender, getTimestamp64());
         int _netCost = marketData[_conditionId].marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
         require(_netCost < 0, "INCONSISTENT_NET_COST");
         weth9Token.transfer(msg.sender, uint(_netCost * - 1));
@@ -231,14 +218,10 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     }
 
     function onERC1155Received(address, address, uint256 _id, uint256 _value, bytes) external returns(bytes4) {
-        tokenHoldings[currentTrader][_id] = tokenHoldings[currentTrader][_id] + _value;
         return this.onERC1155Received.selector;
     }
 
     function onERC1155BatchReceived(address, address, uint256[] _ids, uint256[] _values, bytes) external returns(bytes4) {
-        for(uint _i; _i < _ids.length; _i++) {
-            tokenHoldings[currentTrader][_ids[_i]] = tokenHoldings[currentTrader][_ids[_i]] + _values[_i];
-        }
         return this.onERC1155BatchReceived.selector;
     }
 
@@ -272,7 +255,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             uint payoutStake = tokenHoldings[msg.sender][_positionId];
             if (payoutStake > 0) {
                 totalPayout = totalPayout.add(payoutStake.mul(payoutNumerator).div(den));
-                tokenHoldings[currentTrader][_positionId] = 0;
+                tokenHoldings[msg.sender][_positionId] = 0;
             }
         }
         weth9Token.transfer(msg.sender, totalPayout);
