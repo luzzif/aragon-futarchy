@@ -64,7 +64,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     /// Events
     event Trade(bytes32 conditionId, int[] outcomeTokenAmounts, address transactor, uint timestamp);
     event CreateMarket(bytes32 conditionId, bytes32[] outcomes);
-    event CloseMarket(bytes32 conditionId, uint[] results, uint timestamp);
+    event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp, uint[] marginalPricesAtClosure);
     event RedeemPositions(address redeemer, bytes32 conditionId);
 
     struct MarketData {
@@ -231,9 +231,13 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             bytes32 _questionId) external auth(CLOSE_MARKET_ROLE) requiresMarketData(_conditionId) returns (int) {
         MarketData storage data = marketData[_conditionId];
         require(data.oracle == msg.sender, "INVALID_ORACLE");
+        uint[] memory _marginalPricesAtClosure = new uint[](_payouts.length);
+        for(uint8 _i = 0; _i < _payouts.length; _i++) {
+            _marginalPricesAtClosure[_i] = this.getMarginalPrice(_conditionId, _i);
+        }
         data.marketMaker.close();
         conditionalTokens.reportPayouts(_questionId, _payouts);
-        emit CloseMarket(_conditionId, _payouts, getTimestamp64());
+        emit CloseMarket(_conditionId, _payouts, getTimestamp64(), _marginalPricesAtClosure);
     }
 
     function redeemPositions(uint[] _indexSets, bytes32 _conditionId) external {

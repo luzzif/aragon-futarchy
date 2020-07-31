@@ -95,14 +95,12 @@ export const App = () => {
                     }
                 ).subscribe(() => {}, console.error);
             }
-            api.call("weth9Token").subscribe(console.log);
         },
         [api, connectedAccount]
     );
 
     const handleClose = useCallback(
         (conditionId, questionId, payouts) => {
-            api.call("weth9Token").subscribe(console.log);
             api.closeMarket(
                 payouts,
                 conditionId,

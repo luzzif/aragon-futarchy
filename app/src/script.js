@@ -26,7 +26,8 @@ const removeTrailingZeroes = (string) => {
 const getUpdatedOutcomesInformation = async (
     conditionId,
     outcomeLabels,
-    results
+    payouts,
+    marginalPricesAtClosure
 ) => {
     const outcomes = [];
     const collateralTokenAddress = await app.call("weth9Token").toPromise();
@@ -38,16 +39,21 @@ const getUpdatedOutcomesInformation = async (
             .call("getPositionId", collateralTokenAddress, collectionId)
             .toPromise();
         const balance = await app.call("balanceOf", positionId).toPromise();
-        const price = await app
-            .call("getMarginalPrice", conditionId, i)
-            .toPromise();
+        let price;
+        if (marginalPricesAtClosure && marginalPricesAtClosure[i]) {
+            price = marginalPricesAtClosure[i];
+        } else {
+            price = await app
+                .call("getMarginalPrice", conditionId, i)
+                .toPromise();
+        }
         outcomes.push({
             label: outcomeLabels[i],
             balance,
             price: new BigNumber(price)
                 .dividedBy(new BigNumber("2").pow("64"))
                 .toString(),
-            correct: results && results[i] === "1",
+            correct: payouts && payouts[i] === "1",
         });
     }
     return outcomes;
@@ -83,17 +89,19 @@ const handleCreateMarket = async (event) => {
 
 const handleCloseMarket = async (event, markets) => {
     const { returnValues } = event;
-    const { conditionId, results } = returnValues;
+    const { conditionId, payouts, marginalPricesAtClosure } = returnValues;
     const marketIndex = markets.findIndex(
         (market) => market.conditionId === conditionId
     );
     if (marketIndex >= 0) {
         markets[marketIndex].open = false;
-        markets[marketIndex].results = results;
+        markets[marketIndex].payouts = payouts;
+        markets[marketIndex].marginalPricesAtClosure = marginalPricesAtClosure;
         markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
             conditionId,
             markets[marketIndex].outcomes.map((outcome) => outcome.label),
-            results
+            payouts,
+            marginalPricesAtClosure
         );
     }
     return [...markets];
@@ -122,7 +130,8 @@ const handleRedeemPositions = async (event, markets) => {
     markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
         conditionId,
         markets[marketIndex].outcomes.map((outcome) => outcome.label),
-        markets[marketIndex].results
+        markets[marketIndex].payouts,
+        markets[marketIndex].marginalPricesAtClosure
     );
     return [...markets];
 };
