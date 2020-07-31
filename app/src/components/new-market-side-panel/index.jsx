@@ -2,8 +2,7 @@ import React, { useState, useCallback } from "react";
 import { Field, Button, TextInput, IconRemove } from "@aragon/ui";
 import SidePanel from "@aragon/ui/dist/SidePanel";
 import styled from "styled-components";
-import { DateTime, Duration } from "luxon";
-import DateRangePicker from "@aragon/ui/dist/DateRangePicker";
+import { DateTime } from "luxon";
 import { Box, Flex } from "reflexbox";
 import { useTheme } from "@aragon/ui/dist/Theme";
 
@@ -16,18 +15,13 @@ const OutcomesContainer = styled(Flex)`
     border: solid 1px #dde4e9;
 `;
 
-const WideDateRangePicker = styled(DateRangePicker)`
-    width: 100%;
-`;
-
 export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const theme = useTheme();
 
     const [question, setQuestion] = useState("");
     const [outcome, setOutcome] = useState("");
     const [outcomes, setOutcomes] = useState([]);
-    const [startsAt] = useState(new Date());
-    const [endsAt, setEndsAt] = useState(null);
+    const [endsAt, setEndsAt] = useState("");
     const [funding, setFunding] = useState("");
 
     const handleQuestionChange = useCallback((event) => {
@@ -38,18 +32,14 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome(event.target.value);
     }, []);
 
-    const handleTemporalValidityChange = useCallback(
-        (range) => {
-            let { end } = range;
-            if (end.getTime() < startsAt.getTime()) {
-                end = DateTime.fromJSDate(startsAt)
-                    .plus(Duration.fromObject({ days: 1 }))
-                    .toJSDate();
-            }
-            setEndsAt(end);
-        },
-        [startsAt]
-    );
+    const handleTemporalValidityChange = useCallback((event) => {
+        const stringDate = event.target.value;
+        const date = DateTime.fromISO(stringDate);
+        if (date < DateTime.local()) {
+            return;
+        }
+        setEndsAt(event.target.value);
+    }, []);
 
     const handleFundingChange = useCallback((event) => {
         setFunding(event.target.value);
@@ -71,7 +61,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setOutcome("");
         setOutcomes([]);
         setFunding("");
-        setEndsAt(null);
+        setEndsAt("");
     };
 
     const handleCreate = useCallback(() => {
@@ -152,11 +142,11 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     onChange={handleFundingChange}
                 />
             </Field>
-            <Field label="Temporal validity">
-                <WideDateRangePicker
+            <Field label="Ends at">
+                <TextInput
+                    type="date"
                     wide
-                    startDate={startsAt}
-                    endDate={endsAt}
+                    value={endsAt}
                     onChange={handleTemporalValidityChange}
                 />
             </Field>

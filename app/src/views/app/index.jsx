@@ -9,6 +9,7 @@ import { asciiToHex, toWei } from "web3-utils";
 import { MarketsList } from "../../components/markets-list";
 import { Market } from "../../components/market";
 import { NoMarkets } from "../../components/no-markets";
+import { DateTime } from "luxon";
 
 export const App = () => {
     const { appState, api, connectedAccount } = useAragonApi();
@@ -52,7 +53,7 @@ export const App = () => {
                 outcomes.length,
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
-                parseInt(endsAt.getTime() / 1000),
+                parseInt(DateTime.fromISO(endsAt).toJSDate().getTime() / 1000),
                 {
                     from: connectedAccount,
                     value: toWei(funding.toString(), "ether"),
@@ -117,11 +118,13 @@ export const App = () => {
             <Header
                 primary="Prediction markets"
                 secondary={
-                    <Button
-                        mode="strong"
-                        label="Create a market"
-                        onClick={handleNewMarketOpen}
-                    />
+                    !selectedMarket && (
+                        <Button
+                            mode="strong"
+                            label="Create a market"
+                            onClick={handleNewMarketOpen}
+                        />
+                    )
                 }
             />
             <NewMarketSidePanel
