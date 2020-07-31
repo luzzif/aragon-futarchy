@@ -23,6 +23,7 @@ export const Market = ({
     onBack,
     number,
     conditionId,
+    questionId,
     question,
     creator,
     outcomes,
@@ -39,7 +40,7 @@ export const Market = ({
     const [checked, setChecked] = useState(outcomes[0]);
     const [luxonTimestamp, setLuxonTimestamp] = useState(null);
     const [tradeable, setTradeable] = useState(null);
-    const [canSell, setCanSell] = useState(false);
+    const [canSell, setCanSell] = useState(new BigNumber("0"));
     const [buying, setBuying] = useState(false);
     const [selling, setSelling] = useState(false);
     const [closing, setClosing] = useState(false);
@@ -56,12 +57,8 @@ export const Market = ({
     }, [endsAt, open]);
 
     useEffect(() => {
-        setCanSell(
-            outcomes.find((outcome) =>
-                new BigNumber(outcome.balance).isPositive()
-            )
-        );
-    }, [endsAt, outcomes]);
+        setCanSell(new BigNumber(fromWei(checked.balance)));
+    }, [checked, endsAt, outcomes]);
 
     const handleRadioChange = useCallback(
         (index) => {
@@ -75,7 +72,7 @@ export const Market = ({
     }, []);
 
     const handleSellClick = useCallback(() => {
-        setSelling(false);
+        setSelling(true);
     }, []);
 
     const handleTradingSidePanelClose = useCallback(() => {
@@ -85,7 +82,13 @@ export const Market = ({
 
     const handleSharesAmountChange = useCallback(
         (event) => {
-            const sharesAmount = event.target.value;
+            let sharesAmount = event.target.value;
+            if (
+                selling &&
+                new BigNumber(event.target.value).isGreaterThan(canSell)
+            ) {
+                sharesAmount = canSell.toString();
+            }
             setSharesAmount(sharesAmount);
             if (sharesAmount) {
                 api.call(
@@ -105,19 +108,24 @@ export const Market = ({
                 }, console.error);
             }
         },
-        [api, outcomes, conditionId, checked]
+        [selling, canSell, api, outcomes, conditionId, checked]
     );
 
     const handleTrade = useCallback(
-        (collateralToSpend) => {
+        (collateral) => {
             const outcomeTokensAmount = outcomes
                 .map((mappingOutcome) =>
                     mappingOutcome === checked ? sharesAmount : 0
                 )
-                .map((amount) => (buying ? amount : -amount));
-            onTrade(conditionId, outcomeTokensAmount, collateralToSpend);
+                .map((amount) => (buying || amount === 0 ? amount : -amount));
+            onTrade(
+                conditionId,
+                outcomeTokensAmount,
+                buying || collateral === 0 ? collateral : -collateral,
+                selling
+            );
         },
-        [buying, checked, conditionId, onTrade, outcomes, sharesAmount]
+        [buying, checked, conditionId, onTrade, outcomes, selling, sharesAmount]
     );
 
     const handleCloseMarket = useCallback(() => {
@@ -132,12 +140,13 @@ export const Market = ({
         (outcome) => {
             onClose(
                 conditionId,
+                questionId,
                 outcomes.map((mappedOutcome) =>
                     mappedOutcome === outcome ? "1" : "0"
                 )
             );
         },
-        [conditionId, onClose, outcomes]
+        [conditionId, onClose, outcomes, questionId]
     );
 
     return (
@@ -322,7 +331,7 @@ export const Market = ({
                                 );
                             })}
                             {tradeable && (
-                                <Flex mt="16px" justifyContent="space-between">
+                                <Flex mt="16px" justifyContent="space-around">
                                     <Button
                                         mode="positive"
                                         onClick={handleBuyClick}
@@ -331,7 +340,7 @@ export const Market = ({
                                     </Button>
                                     <Button
                                         mode="negative"
-                                        disabled={!canSell}
+                                        disabled={canSell.isZero()}
                                         onClick={handleSellClick}
                                     >
                                         Sell

@@ -9,7 +9,7 @@ const reducer = (state) => {
     if (!state) {
         return { syncing: true, markets: [] };
     }
-    return state;
+    return { ...state };
 };
 
 ReactDOM.render(

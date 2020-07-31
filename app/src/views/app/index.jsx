@@ -61,14 +61,14 @@ export const App = () => {
     }, []);
 
     const handleTrade = useCallback(
-        (conditionId, outcomeTokensAmount, cost) => {
+        (conditionId, outcomeTokensAmount, cost, selling) => {
             api.trade(
                 conditionId,
                 outcomeTokensAmount.map((amount) => toWei(amount.toString())),
-                toWei(cost, "ether"),
+                toWei(cost.toString(), "ether"),
                 {
                     from: connectedAccount,
-                    value: toWei(cost, "ether"),
+                    value: selling ? 0 : toWei(cost.toString(), "ether"),
                 }
             ).subscribe(() => {}, console.error);
         },
@@ -76,9 +76,12 @@ export const App = () => {
     );
 
     const handleClose = useCallback(
-        (conditionId, payouts) => {
-            api.closeMarket(payouts, conditionId).subscribe(() => {},
-            console.error);
+        (conditionId, questionId, payouts) => {
+            api.closeMarket(
+                payouts,
+                conditionId,
+                questionId
+            ).subscribe(() => {}, console.error);
         },
         [api]
     );

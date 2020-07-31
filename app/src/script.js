@@ -50,19 +50,17 @@ const getUpdatedOutcomesInformation = async (conditionId, outcomeLabels) => {
 
 const handleCreateMarket = async (event) => {
     const { returnValues } = event;
+    const { conditionId, outcomes: outcomeLabels } = returnValues;
     const {
-        conditionId,
-        number,
         creator,
         oracle,
         question,
-        outcomes: outcomeLabels,
         timestamp,
         endsAt,
-    } = returnValues;
+        questionId,
+    } = await app.call("marketData", conditionId).toPromise();
     return {
         conditionId,
-        number,
         creator,
         oracle,
         question: hexToAscii(removeTrailingZeroes(question)),
@@ -73,6 +71,7 @@ const handleCreateMarket = async (event) => {
         timestamp: parseInt(timestamp),
         endsAt: parseInt(endsAt),
         open: true,
+        questionId,
     };
 };
 

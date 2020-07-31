@@ -23,11 +23,11 @@ export const TradingSidePanel = ({
     buy,
     onTrade,
 }) => {
-    const [collateralToSpend, setCollateralToSpend] = useState("0");
+    const [collateral, setCollateral] = useState("0");
 
     useEffect(() => {
         if (sharesAmount && netCost) {
-            setCollateralToSpend(
+            setCollateral(
                 new BigNumber(sharesAmount)
                     .multipliedBy(netCost)
                     .plus(fee)
@@ -38,8 +38,9 @@ export const TradingSidePanel = ({
     }, [fee, netCost, sharesAmount]);
 
     const handleTrade = useCallback(() => {
-        onTrade(collateralToSpend);
-    }, [collateralToSpend, onTrade]);
+        onTrade(collateral);
+        onClose();
+    }, [collateral, onClose, onTrade]);
 
     return (
         <SidePanel
@@ -62,8 +63,8 @@ export const TradingSidePanel = ({
                         ${textStyle("body3")}
                     `}
                 >
-                    Estimated ETH to spend: {collateralToSpend} (
-                    {new BigNumber(fee).decimalPlaces(4).toString()} fee)
+                    Estimated ETH to {buy ? `spend` : `receive`}: {collateral} (
+                    {new BigNumber(fee || "0").decimalPlaces(4).toString()} fee)
                 </Box>
             </Flex>
             <Button
