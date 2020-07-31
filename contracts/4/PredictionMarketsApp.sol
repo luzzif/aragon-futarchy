@@ -14,8 +14,8 @@ interface IConditionalTokens {
     function safeBatchTransferFrom(address from, address to, uint256[] ids, uint256[] values, bytes data) external;
     function setApprovalForAll(address operator, bool approved) external;
     function redeemPositions(IERC20 collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint[] indexSets) external;
-    function payoutNumerators(bytes32 conditionId, uint256 index) public view returns(uint256);
-    function payoutDenominator(bytes32 conditionId) public view returns(uint256);
+    function payoutNumerators(bytes32 conditionId, uint256 index) external view returns(uint256);
+    function payoutDenominator(bytes32 conditionId) external view returns(uint256);
 }
 
 interface IERC165 {
@@ -31,8 +31,8 @@ interface ILMSRMarketMaker {
     function trade(int[] outcomeTokenAmounts, int collateralLimit) external returns (int netCost);
     function calcMarginalPrice(uint8 outcomeTokenIndex) external view returns (uint price);
     function calcNetCost(int[] outcomeTokenAmounts) external view returns (int netCost);
-    function calcMarketFee(uint outcomeTokenCost) public view returns (uint);
-    function close() public;
+    function calcMarketFee(uint outcomeTokenCost) external view returns (uint);
+    function close() external;
 }
 
 interface IERC20 {
@@ -54,14 +54,9 @@ interface ILMSRMarketMakerFactory {
         IERC20 collateralToken,
         bytes32[] conditionIds,
         uint64 fee,
-        IWhitelist whitelist,
+        address whitelist,
         uint funding
     ) external returns (ILMSRMarketMaker lmsrMarketMaker);
-}
-
-interface IWhitelist {
-  function addToWhitelist(address[] users) external;
-  function removeFromWhitelist(address[] users) external;
 }
 
 contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
@@ -73,14 +68,13 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     bytes32 constant public CLOSE_MARKET_ROLE = keccak256("CLOSE_MARKET_ROLE");
 
     /// Events
-    event CreateMarket(bytes32 conditionId, bytes32[] outcomes);
-
     event Trade(
         bytes32 conditionId,
         int[] outcomeTokenAmounts,
         address transactor,
         uint timestamp
     );
+    event CreateMarket(bytes32 conditionId, bytes32[] outcomes);
     event CloseMarket(bytes32 conditionId, uint[] results, uint timestamp);
     event RedeemPositions(address redeemer, bytes32 conditionId);
 
@@ -97,23 +91,25 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
 
     IConditionalTokens public conditionalTokens;
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
-    IWhitelist public whitelist;
     IWETH9 public weth9Token;
     address private currentTrader;
     mapping(bytes32 => MarketData) public marketData;
     mapping(address => mapping(uint => uint)) public tokenHoldings;
     mapping(address => mapping(bytes32 => bool)) public redeemedPositions;
 
+    modifier requiresMarketData(bytes32 _conditionId) {
+        require(marketData[_conditionId].exists, "NON_EXISTENT_CONDITION");
+        _;
+    }
+
     function initialize(
         address _conditionalTokensAddress,
         address _marketMakerFactoryAddress,
-        address _weth9TokenAddress,
-        address _whitelistAddress
+        address _weth9TokenAddress
     ) public onlyInit {
         conditionalTokens = IConditionalTokens(_conditionalTokensAddress);
         lmsrMarketMakerFactory = ILMSRMarketMakerFactory(_marketMakerFactoryAddress);
         weth9Token = IWETH9(_weth9TokenAddress);
-        whitelist = IWhitelist(_whitelistAddress);
         initialized();
     }
 
@@ -135,7 +131,7 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
             weth9Token,
             _conditionIds,
             0,
-            IWhitelist(address(0)),
+            address(0),
             msg.value
         );
         conditionalTokens.setApprovalForAll(address(_marketMaker), true);
@@ -164,37 +160,46 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
         return tokenHoldings[msg.sender][_positionId];
     }
 
-    function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex) external view returns (uint) {
-        MarketData storage data = marketData[_conditionId];
-        require(data.exists, "NON_EXISTENT_CONDITION");
-        return data.marketMaker.calcMarginalPrice(_outcomeIndex);
+    function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex)
+            external
+            view
+            requiresMarketData(_conditionId)
+            returns (uint) {
+        return marketData[_conditionId].marketMaker.calcMarginalPrice(_outcomeIndex);
     }
 
-    function getNetCost(int[] _outcomeTokenAmounts, bytes32 _conditionId) external view returns (int) {
-        MarketData storage data = marketData[_conditionId];
-        require(data.exists, "NON_EXISTENT_CONDITION");
-        return data.marketMaker.calcNetCost(_outcomeTokenAmounts);
+    function getNetCost(int[] _outcomeTokenAmounts, bytes32 _conditionId)
+            external
+            view
+            requiresMarketData(_conditionId)
+            returns (int) {
+        return marketData[_conditionId].marketMaker.calcNetCost(_outcomeTokenAmounts);
     }
 
-    function getMarketFee(bytes32 _conditionId, uint _outcomeTokenCost) external view returns (uint) {
-        MarketData storage data = marketData[_conditionId];
-        require(data.exists, "NON_EXISTENT_CONDITION");
-        return data.marketMaker.calcMarketFee(_outcomeTokenCost);
+    function getMarketFee(bytes32 _conditionId, uint _outcomeTokenCost)
+            external
+            view
+            requiresMarketData(_conditionId)
+            returns (uint) {
+        return marketData[_conditionId].marketMaker.calcMarketFee(_outcomeTokenCost);
     }
 
-    function trade(
-            bytes32 _conditionId,
-            int[] _outcomeTokenAmounts,
-            int _collateralLimit) external payable auth(TRADE_ROLE) returns (int) {
-        MarketData storage data = marketData[_conditionId];
-        require(data.exists, "NON_EXISTENT_CONDITION");
+    function trade(bytes32 _conditionId, int[] _outcomeTokenAmounts, int _collateralLimit)
+            external
+            payable
+            auth(TRADE_ROLE)
+            requiresMarketData(_conditionId)
+            returns (int) {
+        require(getTimestamp64() < marketData[_conditionId].endsAt, "EXPIRED_MARKET");
         currentTrader = msg.sender;
+        ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
+        // FIXME: if the user sells and sends ETH, they can sell everything, even others' assets
         if(msg.value > 0) {
             // Even though it's not certain, if someone sends ETH, they
             // probably want to buy tokens, so perform ETH -> WETH conversion
             // and set allowance accordingly
             weth9Token.deposit.value(msg.value)();
-            weth9Token.approve(address(data.marketMaker), msg.value);
+            weth9Token.approve(address(_marketMaker), msg.value);
         } else {
             // checking if the user wants to sell more than what they have
             for(uint _i; _i < _outcomeTokenAmounts.length; _i++) {
@@ -202,41 +207,32 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
                 if(_outcomeTokenAmount < 0) {
                     bytes32 _collectionId = this.getCollectionId(bytes32(""), _conditionId, _i + 1);
                     uint _positionId = this.getPositionId(weth9Token, _collectionId);
-                    require(tokenHoldings[currentTrader][_positionId] >= uint(_outcomeTokenAmount * -1), "INSUFFICIENT_BALANCE");
-                    tokenHoldings[currentTrader][_positionId] = tokenHoldings[currentTrader][_positionId] - uint(_outcomeTokenAmount * -1);
+                    uint _currentHolding = tokenHoldings[currentTrader][_positionId];
+                    require(_currentHolding >= uint(_outcomeTokenAmount * -1), "INSUFFICIENT_BALANCE");
+                    tokenHoldings[currentTrader][_positionId] = _currentHolding - uint(_outcomeTokenAmount * -1);
                 }
             }
             // can update the price here, since if an error occurs down the line, a revert will happen
         }
         emit Trade(_conditionId, _outcomeTokenAmounts, currentTrader, getTimestamp64());
-        return data.marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
+        return _marketMaker.trade(_outcomeTokenAmounts, _collateralLimit);
     }
 
     function supportsInterface(bytes4 interfaceId) external view returns (bool) {
         return interfaceId == this.onERC1155Received.selector ^ this.onERC1155BatchReceived.selector;
     }
 
-    function onERC1155Received(
-        address _operator,
-        address _from,
-        uint256 _id,
-        uint256 _value,
-        bytes _data
-    ) external returns(bytes4) {
+    function onERC1155Received(address, address, uint256 _id, uint256 _value, bytes) external returns(bytes4) {
         uint _currentBalance = tokenHoldings[currentTrader][_id];
         tokenHoldings[currentTrader][_id] = _currentBalance + _value;
         return this.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(
-            address _operator,
-            address _from,
-            uint256[] _ids,
-            uint256[] _values,
-            bytes _data) external returns(bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] _ids, uint256[] _values, bytes) external returns(bytes4) {
         for(uint _i; _i < _ids.length; _i++) {
-            uint _currentBalance = tokenHoldings[currentTrader][_ids[_i]];
-            tokenHoldings[currentTrader][_ids[_i]] = _currentBalance + _values[_i];
+            uint _id = _ids[_i];
+            uint _currentBalance = tokenHoldings[currentTrader][_id];
+            tokenHoldings[currentTrader][_id] = _currentBalance + _values[_i];
         }
         return this.onERC1155BatchReceived.selector;
     }
@@ -244,9 +240,8 @@ contract PredictionMarketsApp is AragonApp, IERC1155Receiver {
     function closeMarket(
             uint[] _payouts,
             bytes32 _conditionId,
-            bytes32 _questionId) external auth(CLOSE_MARKET_ROLE) returns (int) {
+            bytes32 _questionId) external auth(CLOSE_MARKET_ROLE) requiresMarketData(_conditionId) returns (int) {
         MarketData storage data = marketData[_conditionId];
-        require(data.exists, "NON_EXISTENT_CONDITION");
         require(data.oracle == msg.sender, "INVALID_ORACLE");
         data.marketMaker.close();
         conditionalTokens.reportPayouts(_questionId, _payouts);

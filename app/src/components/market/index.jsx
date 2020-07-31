@@ -242,7 +242,7 @@ export const Market = ({
                                 alignItems="center"
                                 height="30px"
                             >
-                                <Box mr="8px">
+                                <Box mr="2px">
                                     {tradeable ? <IconCheck /> : <IconError />}
                                 </Box>
                                 <Box
