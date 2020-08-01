@@ -26,3 +26,8 @@ Powered by
   of which address possesses how much tokens for a certain position, in order to
   avoid manually setting the allowance).
 - Use multiple collateral options.
+
+## Development
+
+In order to fire up a local Ganache network with the contracts ready to go, and
+to deploy the Aragon client frontend, simply use the `yarn start` command.
