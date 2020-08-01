@@ -31,3 +31,8 @@ Powered by
 
 In order to fire up a local Ganache network with the contracts ready to go, and
 to deploy the Aragon client frontend, simply use the `yarn start` command.
+
+## Demo
+
+A brief demo video explaining how the app works is available
+[here](https://youtu.be/h5jGkKMqcDU).
