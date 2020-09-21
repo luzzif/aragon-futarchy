@@ -185,7 +185,7 @@ export const Market = ({
                             <Box
                                 mb="8px"
                                 css={`
-                                ${textStyle("label2")}
+                                    ${textStyle("label2")}
                                     color: ${theme.contentSecondary};
                                 `}
                             >
@@ -201,18 +201,18 @@ export const Market = ({
                             <Box
                                 mb="8px"
                                 css={`
-                                ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
+                                    ${textStyle("label2")}
+                                    color: ${theme.contentSecondary};
+                                `}
                             >
                                 Open since
                             </Box>
                             <Box
                                 mb="24px"
                                 css={`
-                                ${textStyle("body2")}
-                                color: ${theme.content};
-                            `}
+                                    ${textStyle("body2")}
+                                    color: ${theme.content};
+                                `}
                             >
                                 {luxonTimestamp &&
                                     luxonTimestamp.toLocaleString(
@@ -232,11 +232,9 @@ export const Market = ({
                                 mb="24px"
                                 css={`
                                     ${textStyle("label2")}
-                                    color: ${
-                                        tradeable
-                                            ? theme.positive
-                                            : theme.negative
-                                    };
+                                    color: ${tradeable
+                                        ? theme.positive
+                                        : theme.negative};
                                 `}
                                 display="flex"
                                 alignItems="center"
@@ -262,27 +260,27 @@ export const Market = ({
                             <Box
                                 mb="8px"
                                 css={`
-                                ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
+                                    ${textStyle("label2")}
+                                    color: ${theme.contentSecondary};
+                                `}
                             >
                                 Question
                             </Box>
                             <Box
                                 mb="24px"
                                 css={`
-                                ${textStyle("body2")}
-                                color: ${theme.content};
-                            `}
+                                    ${textStyle("body2")}
+                                    color: ${theme.content};
+                                `}
                             >
                                 {question}
                             </Box>
                             <Box
                                 mb="8px"
                                 css={`
-                                ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
+                                    ${textStyle("label2")}
+                                    color: ${theme.contentSecondary};
+                                `}
                             >
                                 Outcomes
                             </Box>
