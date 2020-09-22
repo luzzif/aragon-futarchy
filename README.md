@@ -1,6 +1,6 @@
-# Aragon prediction markets
+# Aragon Futarchy
 
-A simple app to bring the innovation of prediction markets to Aragon-based DAOs.
+A simple app to bring the innovation of futarchy to Aragon-based DAOs.
 
 Powered by
 [Gnosis conditional tokens framework](https://github.com/gnosis/conditional-tokens-contracts).
@@ -21,10 +21,10 @@ Powered by
 - Unwrap ETH before actually sending it back to the user (right now on shares
   sell and position redeems, WETH is sent back, even though when collateralizing
   a market or buying, raw ETH is used and wrapped on demand).
-- On trade, actually transfer the ERC1155 tokens to the user (for simplicity's
+- ~~On trade, actually transfer the ERC1155 tokens to the user (for simplicity's
   sake, right now the Aragon app's contract holds all the tokens and keeps track
   of which address possesses how much tokens for a certain position, in order to
-  avoid manually setting the allowance).
+  avoid manually setting the allowance).~~
 - Use multiple collateral options.
 
 ## Development

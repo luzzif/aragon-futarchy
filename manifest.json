@@ -1,7 +1,7 @@
 {
-    "name": "Prediction markets",
-    "author": "Placeholder-author",
-    "description": "An application for Aragon",
+    "name": "Futarchy",
+    "author": "Federico Luzzi",
+    "description": "Futarchy for the next-generation DAO governance processes.",
     "details_url": "/meta/details.md",
     "source_url": "https://<placeholder-repository-url>",
     "icons": [

@@ -1,7 +1,7 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import Aragon, { events } from "@aragon/api";
-import { hexToAscii, asciiToHex } from "web3-utils";
+import { hexToAscii } from "web3-utils";
 import BigNumber from "bignumber.js";
 
 const app = new Aragon();
@@ -24,6 +24,7 @@ const removeTrailingZeroes = (string) => {
 };
 
 const getUpdatedOutcomesInformation = async (
+    selectedAccount,
     conditionId,
     outcomeLabels,
     payouts,
@@ -33,12 +34,14 @@ const getUpdatedOutcomesInformation = async (
     const collateralTokenAddress = await app.call("weth9Token").toPromise();
     for (let i = 0; i < outcomeLabels.length; i++) {
         const collectionId = await app
-            .call("getCollectionId", asciiToHex(""), conditionId, i + 1)
+            .call("getCollectionId", conditionId, i + 1)
             .toPromise();
         const positionId = await app
             .call("getPositionId", collateralTokenAddress, collectionId)
             .toPromise();
-        const balance = await app.call("balanceOf", positionId).toPromise();
+        const balance = await app
+            .call("balanceOf", selectedAccount, positionId)
+            .toPromise();
         let price;
         if (marginalPricesAtClosure && marginalPricesAtClosure[i]) {
             price = marginalPricesAtClosure[i];
@@ -59,7 +62,7 @@ const getUpdatedOutcomesInformation = async (
     return outcomes;
 };
 
-const handleCreateMarket = async (event) => {
+const handleCreateMarket = async (event, selectedAccount) => {
     const { returnValues } = event;
     const { conditionId, outcomes: outcomeLabels } = returnValues;
     const {
@@ -76,6 +79,7 @@ const handleCreateMarket = async (event) => {
         oracle,
         question: hexToAscii(removeTrailingZeroes(question)),
         outcomes: await getUpdatedOutcomesInformation(
+            selectedAccount,
             conditionId,
             outcomeLabels.map(removeTrailingZeroes).map(hexToAscii)
         ),
@@ -87,7 +91,7 @@ const handleCreateMarket = async (event) => {
     };
 };
 
-const handleCloseMarket = async (event, markets) => {
+const handleCloseMarket = async (event, markets, selectedAccount) => {
     const { returnValues } = event;
     const { conditionId, payouts, marginalPricesAtClosure } = returnValues;
     const marketIndex = markets.findIndex(
@@ -98,6 +102,7 @@ const handleCloseMarket = async (event, markets) => {
         markets[marketIndex].payouts = payouts;
         markets[marketIndex].marginalPricesAtClosure = marginalPricesAtClosure;
         markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
+            selectedAccount,
             conditionId,
             markets[marketIndex].outcomes.map((outcome) => outcome.label),
             payouts,
@@ -107,20 +112,21 @@ const handleCloseMarket = async (event, markets) => {
     return [...markets];
 };
 
-const handleTrade = async (event, markets) => {
+const handleTrade = async (event, markets, selectedAccount) => {
     const { returnValues } = event;
     const { conditionId } = returnValues;
     const marketIndex = markets.findIndex(
         (market) => market.conditionId === conditionId
     );
     markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
+        selectedAccount,
         conditionId,
         markets[marketIndex].outcomes.map((outcome) => outcome.label)
     );
     return [...markets];
 };
 
-const handleRedeemPositions = async (event, markets) => {
+const handleRedeemPositions = async (event, markets, selectedAccount) => {
     const { returnValues } = event;
     const { conditionId } = returnValues;
     const marketIndex = markets.findIndex(
@@ -128,6 +134,7 @@ const handleRedeemPositions = async (event, markets) => {
     );
     markets[marketIndex].redeemed = true;
     markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
+        selectedAccount,
         conditionId,
         markets[marketIndex].outcomes.map((outcome) => outcome.label),
         markets[marketIndex].payouts,
@@ -145,31 +152,46 @@ app.store(async (state, action) => {
         case events.SYNC_STATUS_SYNCED: {
             return { ...state, syncing: false };
         }
+        case events.ACCOUNTS_TRIGGER: {
+            return { ...state, selectedAccount: action.returnValues.account };
+        }
         case "CreateMarket": {
             return {
                 ...state,
                 markets: [
                     ...(state.markets || []),
-                    await handleCreateMarket(action),
+                    await handleCreateMarket(action, state.selectedAccount),
                 ],
             };
         }
         case "CloseMarket": {
             return {
                 ...state,
-                markets: await handleCloseMarket(action, state.markets || []),
+                markets: await handleCloseMarket(
+                    action,
+                    state.markets || [],
+                    state.selectedAccount
+                ),
             };
         }
         case "Trade": {
             return {
                 ...state,
-                markets: await handleTrade(action, state.markets),
+                markets: await handleTrade(
+                    action,
+                    state.markets,
+                    state.selectedAccount
+                ),
             };
         }
         case "RedeemPositions": {
             return {
                 ...state,
-                markets: await handleRedeemPositions(action, state.markets),
+                markets: await handleRedeemPositions(
+                    action,
+                    state.markets,
+                    state.selectedAccount
+                ),
             };
         }
         default: {

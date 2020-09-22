@@ -114,10 +114,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             collateralTokenAddress,
             conditionId
         );
-        const rawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
-            user,
-            positionId
-        );
+        const rawOutcomeTokenAmount = await app.balanceOf(user, positionId);
         assert.equal(rawOutcomeTokenAmount.toString(), wantedShares);
     });
 
@@ -146,7 +143,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             collateralTokenAddress,
             conditionId
         );
-        const preSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
+        const preSellRawOutcomeTokenAmount = await app.balanceOf(
             user,
             positionId
         );
@@ -157,7 +154,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
         const sellReceipt = await app.sell(conditionId, outcomeTokensAmount, {
             from: user,
         });
-        const postSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
+        const postSellRawOutcomeTokenAmount = await app.balanceOf(
             user,
             positionId
         );
@@ -196,10 +193,7 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
             collateralTokenAddress,
             conditionId
         );
-        assert.equal(
-            wantedShares,
-            await conditionalTokensInstance.balanceOf(user, positionId)
-        );
+        assert.equal(wantedShares, await app.balanceOf(user, positionId));
         assertRevert(
             app.sell(conditionId, [toWei("2"), "0"], { from: user }),
             "INSUFFICIENT_BALANCE"

@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 
 import "./Abstraction.sol";
 
-contract PredictionMarketsHelpers {
+contract Helpers {
     function getAllPositionIds(
             IConditionalTokens _conditionalTokens,
             bytes32 _conditionId,

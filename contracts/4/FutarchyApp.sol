@@ -4,9 +4,9 @@ import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "./Abstraction.sol";
 import "./ERC1155Receiver.sol";
-import "./PredictionMarketsHelpers.sol";
+import "./Helpers.sol";
 
-contract PredictionMarketsApp is AragonApp, ERC1155Receiver, PredictionMarketsHelpers {
+contract PredictionMarketsApp is AragonApp, ERC1155Receiver, Helpers {
     using SafeMath for uint256;
 
     /// ACL
@@ -41,7 +41,6 @@ contract PredictionMarketsApp is AragonApp, ERC1155Receiver, PredictionMarketsHe
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
     IWETH9 public weth9Token;
     mapping(bytes32 => MarketData) public marketData;
-    mapping(address => mapping(uint => uint)) public tokenHoldings;
     mapping(address => mapping(bytes32 => bool)) public redeemedPositions;
 
     modifier requiresMarketData(bytes32 _conditionId) {
@@ -199,7 +198,7 @@ contract PredictionMarketsApp is AragonApp, ERC1155Receiver, PredictionMarketsHe
       * @notice Redeem position on a closed prediction market
       */
     function redeemPositions(uint[] _indexSets, bytes32 _conditionId) external {
-        conditionalTokens.redeemPositions(weth9Token, bytes32(""), _conditionId, _indexSets);
+        /* conditionalTokens.redeemPositions(weth9Token, bytes32(""), _conditionId, _indexSets);
         uint totalPayout = 0;
         uint den = conditionalTokens.payoutDenominator(_conditionId);
         for (uint i = 0; i < _indexSets.length; i++) {
@@ -221,6 +220,45 @@ contract PredictionMarketsApp is AragonApp, ERC1155Receiver, PredictionMarketsHe
             }
         }
         weth9Token.transfer(msg.sender, totalPayout);
-        emit RedeemPositions(msg.sender, _conditionId);
+        emit RedeemPositions(msg.sender, _conditionId); */
+    }
+
+    // ctf proxy functions
+    function getCollectionId(
+            bytes32 _conditionId,
+            uint _indexSet) external view returns (bytes32) {
+        return conditionalTokens.getCollectionId("", _conditionId, _indexSet);
+    }
+
+    function getPositionId(IERC20 _collateralToken, bytes32 _collectionId) external view returns (uint) {
+        return conditionalTokens.getPositionId(_collateralToken, _collectionId);
+    }
+
+    function balanceOf(address _owner, uint _positionId) public view returns (uint) {
+        return conditionalTokens.balanceOf(_owner, _positionId);
+    }
+
+    function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex)
+            external
+            view
+            requiresMarketData(_conditionId)
+            returns (uint) {
+        return marketData[_conditionId].marketMaker.calcMarginalPrice(_outcomeIndex);
+    }
+
+    function getNetCost(int[] _outcomeTokenAmounts, bytes32 _conditionId)
+            external
+            view
+            requiresMarketData(_conditionId)
+            returns (int) {
+        return marketData[_conditionId].marketMaker.calcNetCost(_outcomeTokenAmounts);
+    }
+
+    function getMarketFee(bytes32 _conditionId, uint _outcomeTokenCost)
+            external
+            view
+            requiresMarketData(_conditionId)
+            returns (uint) {
+        return marketData[_conditionId].marketMaker.calcMarketFee(_outcomeTokenCost);
     }
 }

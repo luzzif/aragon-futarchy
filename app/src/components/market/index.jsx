@@ -125,11 +125,9 @@ export const Market = ({
 
     const handleTrade = useCallback(
         (collateral) => {
-            const outcomeTokensAmount = outcomes
-                .map((mappingOutcome) =>
-                    mappingOutcome === checked ? sharesAmount : 0
-                )
-                .map((amount) => (buying || amount === 0 ? amount : -amount));
+            const outcomeTokensAmount = outcomes.map((mappingOutcome) =>
+                mappingOutcome === checked ? sharesAmount : 0
+            );
             onTrade(
                 conditionId,
                 outcomeTokensAmount,
