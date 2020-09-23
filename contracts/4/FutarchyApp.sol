@@ -222,43 +222,4 @@ contract PredictionMarketsApp is AragonApp, ERC1155Receiver, Helpers {
         weth9Token.transfer(msg.sender, totalPayout);
         emit RedeemPositions(msg.sender, _conditionId); */
     }
-
-    // ctf proxy functions
-    function getCollectionId(
-            bytes32 _conditionId,
-            uint _indexSet) external view returns (bytes32) {
-        return conditionalTokens.getCollectionId("", _conditionId, _indexSet);
-    }
-
-    function getPositionId(IERC20 _collateralToken, bytes32 _collectionId) external view returns (uint) {
-        return conditionalTokens.getPositionId(_collateralToken, _collectionId);
-    }
-
-    function balanceOf(address _owner, uint _positionId) public view returns (uint) {
-        return conditionalTokens.balanceOf(_owner, _positionId);
-    }
-
-    function getMarginalPrice(bytes32 _conditionId, uint8 _outcomeIndex)
-            external
-            view
-            requiresMarketData(_conditionId)
-            returns (uint) {
-        return marketData[_conditionId].marketMaker.calcMarginalPrice(_outcomeIndex);
-    }
-
-    function getNetCost(int[] _outcomeTokenAmounts, bytes32 _conditionId)
-            external
-            view
-            requiresMarketData(_conditionId)
-            returns (int) {
-        return marketData[_conditionId].marketMaker.calcNetCost(_outcomeTokenAmounts);
-    }
-
-    function getMarketFee(bytes32 _conditionId, uint _outcomeTokenCost)
-            external
-            view
-            requiresMarketData(_conditionId)
-            returns (uint) {
-        return marketData[_conditionId].marketMaker.calcMarketFee(_outcomeTokenCost);
-    }
 }

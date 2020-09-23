@@ -1,8 +1,10 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import Aragon, { events } from "@aragon/api";
-import { hexToAscii } from "web3-utils";
+import { asciiToHex, hexToAscii } from "web3-utils";
 import BigNumber from "bignumber.js";
+import conditionalTokensAbi from "./abi/conditional-tokens.json";
+import lmsrMarketMakerAbi from "./abi/lmsr-market-maker.json";
 
 const app = new Aragon();
 
@@ -32,23 +34,30 @@ const getUpdatedOutcomesInformation = async (
 ) => {
     const outcomes = [];
     const collateralTokenAddress = await app.call("weth9Token").toPromise();
+    const conditionalTokensInstance = app.external(
+        await app.call("conditionalTokens").toPromise(),
+        conditionalTokensAbi
+    );
+    const marketData = await app.call("marketData", conditionId).toPromise();
+    const marketMakerInstance = app.external(
+        marketData.marketMaker,
+        lmsrMarketMakerAbi
+    );
     for (let i = 0; i < outcomeLabels.length; i++) {
-        const collectionId = await app
-            .call("getCollectionId", conditionId, i + 1)
+        const collectionId = await conditionalTokensInstance
+            .getCollectionId(asciiToHex(""), conditionId, i + 1)
             .toPromise();
-        const positionId = await app
-            .call("getPositionId", collateralTokenAddress, collectionId)
+        const positionId = await conditionalTokensInstance
+            .getPositionId(collateralTokenAddress, collectionId)
             .toPromise();
-        const balance = await app
-            .call("balanceOf", selectedAccount, positionId)
+        const balance = await conditionalTokensInstance
+            .balanceOf(selectedAccount, positionId)
             .toPromise();
         let price;
         if (marginalPricesAtClosure && marginalPricesAtClosure[i]) {
             price = marginalPricesAtClosure[i];
         } else {
-            price = await app
-                .call("getMarginalPrice", conditionId, i)
-                .toPromise();
+            price = await marketMakerInstance.calcMarginalPrice(i).toPromise();
         }
         outcomes.push({
             label: outcomeLabels[i],
@@ -153,7 +162,10 @@ app.store(async (state, action) => {
             return { ...state, syncing: false };
         }
         case events.ACCOUNTS_TRIGGER: {
-            return { ...state, selectedAccount: action.returnValues.account };
+            return {
+                ...state,
+                selectedAccount: action.returnValues.account,
+            };
         }
         case "CreateMarket": {
             return {

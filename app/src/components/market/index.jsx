@@ -18,6 +18,7 @@ import { useAragonApi } from "@aragon/api-react";
 import { toWei, fromWei } from "web3-utils";
 import { CloseSidePanel } from "./close-side-panel";
 import { IconError } from "@aragon/ui";
+import lsmrMarketMakerAbi from "../../abi/lmsr-market-maker.json";
 
 export const Market = ({
     onBack,
@@ -93,7 +94,7 @@ export const Market = ({
     }, []);
 
     const handleSharesAmountChange = useCallback(
-        (event) => {
+        async (event) => {
             let sharesAmount = event.target.value;
             if (
                 selling &&
@@ -103,21 +104,25 @@ export const Market = ({
             }
             setSharesAmount(sharesAmount);
             if (sharesAmount) {
-                api.call(
-                    "getNetCost",
-                    outcomes.map((outcome) =>
-                        outcome === checked ? toWei(sharesAmount) : "0"
-                    ),
-                    conditionId
-                ).subscribe((weiNetCost) => {
-                    setNetCost(fromWei(weiNetCost, "ether"));
-                    api.call("getMarketFee", conditionId, weiNetCost).subscribe(
-                        (weiFee) => {
-                            setFee(fromWei(weiFee, "ether"));
-                        },
-                        console.error
-                    );
-                }, console.error);
+                const { marketMaker: marketMakerAddress } = await api
+                    .call("marketData", conditionId)
+                    .toPromise();
+                const marketMakerInstance = await api.external(
+                    marketMakerAddress,
+                    lsmrMarketMakerAbi
+                );
+                const weiNetCost = await marketMakerInstance
+                    .calcNetCost(
+                        outcomes.map((outcome) =>
+                            outcome === checked ? toWei(sharesAmount) : "0"
+                        )
+                    )
+                    .toPromise();
+                setNetCost(fromWei(weiNetCost, "ether"));
+                const weiFee = await marketMakerInstance
+                    .calcMarketFee(weiNetCost)
+                    .toPromise();
+                setFee(fromWei(weiFee, "ether"));
             }
         },
         [selling, canSell, api, outcomes, conditionId, checked]

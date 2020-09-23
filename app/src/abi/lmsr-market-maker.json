@@ -1,0 +1,105 @@
+[
+    {
+        "constant": false,
+        "inputs": [
+            {
+                "name": "outcomeTokenAmounts",
+                "type": "int256[]"
+            },
+            {
+                "name": "collateralLimit",
+                "type": "int256"
+            }
+        ],
+        "name": "trade",
+        "outputs": [
+            {
+                "name": "netCost",
+                "type": "int256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [],
+        "name": "close",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "outcomeTokenAmounts",
+                "type": "int256[]"
+            }
+        ],
+        "name": "calcNetCost",
+        "outputs": [
+            {
+                "name": "netCost",
+                "type": "int256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "outcomeTokenCost",
+                "type": "uint256"
+            }
+        ],
+        "name": "calcMarketFee",
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "outcomeTokenIndex",
+                "type": "uint8"
+            }
+        ],
+        "name": "calcMarginalPrice",
+        "outputs": [
+            {
+                "name": "price",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "atomicOutcomeSlotCount",
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
