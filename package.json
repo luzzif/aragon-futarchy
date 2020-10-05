@@ -1,7 +1,7 @@
 {
-    "name": "prediction-markets",
+    "name": "aragon-futarchy",
     "version": "0.0.1",
-    "description": "An Aragon app to enable prediction market decision-making. Powered by Gnosis' conditional token framework.",
+    "description": "An Aragon app to facilitate futarchy. Powered by Gnosis' conditional token framework.",
     "author": "Federico Luzzi <fedeluzzi00@gmail.com>",
     "license": "GPL-3.0",
     "private": true,

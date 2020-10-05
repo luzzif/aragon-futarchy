@@ -25,7 +25,7 @@ module.exports = {
         clientServePort: 3000,
         appSrcPath: "app/",
         appBuildOutputPath: "dist/",
-        appName: "prediction-markets",
+        appName: "futarchy",
         hooks,
     },
 };

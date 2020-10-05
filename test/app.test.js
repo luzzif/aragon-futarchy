@@ -11,14 +11,14 @@ const {
 } = require("./helpers/markets");
 const { getWeth9Balance } = require("./helpers/balances.js");
 
-const PredictionMarketsApp = artifacts.require("PredictionMarketsApp.sol");
+const FutarchyApp = artifacts.require("FutarchyApp.sol");
 
 // eslint-disable-next-line no-undef
-contract("PredictionMarketsApp", ([appManager, user]) => {
+contract("FutarchyApp", ([appManager, user]) => {
     let appBase, app, conditionalTokensInstance, collateralTokenAddress;
 
     before("deploy base app", async () => {
-        appBase = await PredictionMarketsApp.new();
+        appBase = await FutarchyApp.new();
     });
 
     beforeEach("deploy dao and app", async () => {
@@ -26,11 +26,12 @@ contract("PredictionMarketsApp", ([appManager, user]) => {
 
         const proxyAddress = await newApp(
             dao,
-            "prediction-markets",
+            "futarchy",
             appBase.address,
             appManager
         );
-        app = await PredictionMarketsApp.at(proxyAddress);
+        app = await FutarchyApp.at(proxyAddress);
+        console.log(app);
 
         await setOpenPermission(
             acl,

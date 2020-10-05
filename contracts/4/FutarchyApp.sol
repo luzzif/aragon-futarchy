@@ -6,7 +6,7 @@ import "./Abstraction.sol";
 import "./ERC1155Receiver.sol";
 import "./Helpers.sol";
 
-contract PredictionMarketsApp is AragonApp, ERC1155Receiver, Helpers {
+contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     using SafeMath for uint256;
 
     /// ACL
