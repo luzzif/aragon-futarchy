@@ -4,3 +4,5 @@ artifacts
 cache
 dist
 ipfs.cmd
+.env*
+package-lock.json
