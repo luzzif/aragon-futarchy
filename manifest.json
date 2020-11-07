@@ -1,9 +1,9 @@
 {
     "name": "Futarchy",
     "author": "Federico Luzzi",
-    "description": "Futarchy for the next-generation DAO governance processes.",
+    "description": "Futarchy for the next-generation DAO governance.",
     "details_url": "/meta/details.md",
-    "source_url": "https://<placeholder-repository-url>",
+    "source_url": "https://github.com/luzzif/aragon-futarchy",
     "icons": [
         {
             "src": "/meta/icon.svg",

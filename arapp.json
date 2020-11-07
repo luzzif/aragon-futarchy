@@ -37,5 +37,6 @@
             "network": "mainnet"
         }
     },
-    "path": "contracts/4/FutarchyApp.sol"
+    "path": "contracts/4/FutarchyApp.sol",
+    "appName": "futarchy-pm"
 }

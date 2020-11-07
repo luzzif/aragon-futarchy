@@ -9,10 +9,11 @@ import { Market } from "../market";
 export const App = () => {
     const {
         appState: { syncing },
+        guiStyle: { appearance },
     } = useAragonApi();
 
     return (
-        <Main>
+        <Main appearence={appearance}>
             {syncing && <SyncIndicator />}
             <Switch>
                 <Route path="/market/:conditionId">
