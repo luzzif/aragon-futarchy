@@ -13,7 +13,7 @@ export const App = () => {
     } = useAragonApi();
 
     return (
-        <Main appearence={appearance}>
+        <Main theme={appearance}>
             {syncing && <SyncIndicator />}
             <Switch>
                 <Route path="/market/:conditionId">
