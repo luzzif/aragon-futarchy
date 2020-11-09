@@ -20,7 +20,7 @@
         "lint": "yarn lint:code && yarn lint:prettier",
         "app:verify-initialization-parameters": "node ./scripts/initialization-check",
         "apm:versions": "aragon apm versions",
-        "rinkeby:install": "dao install 0x651bd274E5CB9dbF89631a0f8ED24AB448329BA3 futarchy-pm.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0xc778417E063141139Fce010982780140Aa0cD5Ab --set-permissions open"
+        "rinkeby:install": "dao install 0xf514dc471920232B500e66295995576439E98eC2 futarchy-pm.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0xc778417E063141139Fce010982780140Aa0cD5Ab --set-permissions open"
     },
     "dependencies": {
         "@aragon/os": "^4.4.0",
