@@ -31,7 +31,6 @@ contract("FutarchyApp", ([appManager, user]) => {
             appManager
         );
         app = await FutarchyApp.at(proxyAddress);
-        console.log(app);
 
         await setOpenPermission(
             acl,
@@ -115,7 +114,10 @@ contract("FutarchyApp", ([appManager, user]) => {
             collateralTokenAddress,
             conditionId
         );
-        const rawOutcomeTokenAmount = await app.balanceOf(user, positionId);
+        const rawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
+            user,
+            positionId
+        );
         assert.equal(rawOutcomeTokenAmount.toString(), wantedShares);
     });
 
@@ -144,7 +146,7 @@ contract("FutarchyApp", ([appManager, user]) => {
             collateralTokenAddress,
             conditionId
         );
-        const preSellRawOutcomeTokenAmount = await app.balanceOf(
+        const preSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
             user,
             positionId
         );
@@ -155,7 +157,7 @@ contract("FutarchyApp", ([appManager, user]) => {
         const sellReceipt = await app.sell(conditionId, outcomeTokensAmount, {
             from: user,
         });
-        const postSellRawOutcomeTokenAmount = await app.balanceOf(
+        const postSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
             user,
             positionId
         );
@@ -194,7 +196,10 @@ contract("FutarchyApp", ([appManager, user]) => {
             collateralTokenAddress,
             conditionId
         );
-        assert.equal(wantedShares, await app.balanceOf(user, positionId));
+        assert.equal(
+            wantedShares,
+            await conditionalTokensInstance.balanceOf(user, positionId)
+        );
         assertRevert(
             app.sell(conditionId, [toWei("2"), "0"], { from: user }),
             "INSUFFICIENT_BALANCE"
@@ -202,7 +207,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     });
 
     it("should let a user close a market", async () => {
-        let receipt = await newMarket(
+        let { conditionId } = await newMarket(
             app,
             user,
             "test-question",
@@ -210,13 +215,6 @@ contract("FutarchyApp", ([appManager, user]) => {
             parseInt(Date.now() / 1000) + 1000,
             "1"
         );
-        const createMarketEvent = receipt.logs.find(
-            (log) => log.event === "CreateMarket"
-        );
-        if (!createMarketEvent) {
-            throw new Error("no create market event");
-        }
-        const { conditionId } = createMarketEvent.args;
         const { questionId } = await app.marketData(conditionId, {
             from: user,
         });
@@ -226,7 +224,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     });
 
     it("should let a user redeem their positions", async () => {
-        let receipt = await newMarket(
+        let { conditionId } = await newMarket(
             app,
             user,
             "test-question",
@@ -234,13 +232,6 @@ contract("FutarchyApp", ([appManager, user]) => {
             parseInt(Date.now() / 1000) + 1000,
             "1"
         );
-        const createMarketEvent = receipt.logs.find(
-            (log) => log.event === "CreateMarket"
-        );
-        if (!createMarketEvent) {
-            throw new Error("no create market event");
-        }
-        const { conditionId } = createMarketEvent.args;
         const wantedShares = toWei("1");
         const outcomeTokens = [wantedShares, "0"];
         const netCost = await app.getNetCost(outcomeTokens, conditionId);
@@ -261,7 +252,9 @@ contract("FutarchyApp", ([appManager, user]) => {
             collectionId
         );
         const onchainBalance = (
-            await app.balanceOf(positionId, { from: user })
+            await conditionalTokensInstance.balanceOf(positionId, {
+                from: user,
+            })
         ).toString();
         assert.equal(onchainBalance, wantedShares);
         const { questionId } = await app.marketData(conditionId, {
