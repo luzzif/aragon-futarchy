@@ -27,13 +27,7 @@ export const TradingSidePanel = ({
 
     useEffect(() => {
         if (sharesAmount && netCost) {
-            setCollateral(
-                new BigNumber(sharesAmount)
-                    .multipliedBy(netCost)
-                    .plus(fee)
-                    .decimalPlaces(4)
-                    .toString()
-            );
+            setCollateral(new BigNumber(netCost).plus(fee).toString());
         }
     }, [fee, netCost, sharesAmount]);
 

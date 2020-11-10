@@ -12,7 +12,7 @@ const Margin = styled.div`
 
 const OutcomesContainer = styled(Flex)`
     border-radius: 4px;
-    border: solid 1px #dde4e9;
+    border: solid 1px ${({ borderColor }) => borderColor};
 `;
 
 export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
@@ -103,7 +103,10 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                 />
             </Field>
             <Field label="Added outcomes">
-                <OutcomesContainer flexDirection="column">
+                <OutcomesContainer
+                    flexDirection="column"
+                    borderColor={theme.border}
+                >
                     {outcomes && outcomes.length > 0 ? (
                         outcomes.map((outcome, index) => (
                             <Flex
