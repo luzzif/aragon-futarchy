@@ -5,6 +5,7 @@ import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "./Abstraction.sol";
 import "./ERC1155Receiver.sol";
 import "./Helpers.sol";
+import "@realitio/realitio-contracts/truffle/contracts/Realitio.sol";
 
 contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     using SafeMath for uint256;
@@ -29,17 +30,20 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     struct MarketData {
         ILMSRMarketMaker marketMaker;
         bytes32 questionId;
+        bytes32 realitioQuestionId;
         address creator;
         string question;
         address oracle;
         uint timestamp;
-        uint endsAt;
+        uint32 endsAt;
         bool exists;
     }
 
     IConditionalTokens public conditionalTokens;
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
     IWETH9 public weth9Token;
+    IRealitio public realitio;
+    address public klerosArbitratorAddress;
     mapping(bytes32 => MarketData) public marketData;
     mapping(address => mapping(bytes32 => bool)) public redeemedPositions;
 
@@ -56,11 +60,15 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     function initialize(
         address _conditionalTokensAddress,
         address _marketMakerFactoryAddress,
-        address _weth9TokenAddress
+        address _weth9TokenAddress,
+        address _realitioAddress,
+        address _klerosArbitratorAddress
     ) public onlyInit {
         conditionalTokens = IConditionalTokens(_conditionalTokensAddress);
         lmsrMarketMakerFactory = ILMSRMarketMakerFactory(_marketMakerFactoryAddress);
         weth9Token = IWETH9(_weth9TokenAddress);
+        realitio = IRealitio(_realitioAddress);
+        klerosArbitratorAddress = _klerosArbitratorAddress;
         initialized();
     }
 
@@ -68,16 +76,15 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
       * @notice Create a prediction market
       */
     function createMarket(
-            address _oracle,
             bytes32 _questionId,
-            uint _outcomesAmount,
             string _question,
             bytes32[] _outcomes,
-            uint endsAt) external payable auth(CREATE_MARKET_ROLE) {
+            uint32 _endsAt,
+            string _realitioQuestion) external payable auth(CREATE_MARKET_ROLE) {
         weth9Token.deposit.value(msg.value)();
         weth9Token.approve(address(lmsrMarketMakerFactory), msg.value);
-        conditionalTokens.prepareCondition(address(this), _questionId, _outcomesAmount);
-        bytes32 _conditionId = conditionalTokens.getConditionId(address(this), _questionId, _outcomesAmount);
+        conditionalTokens.prepareCondition(address(this), _questionId, _outcomes.length);
+        bytes32 _conditionId = conditionalTokens.getConditionId(address(this), _questionId, _outcomes.length);
         bytes32[] memory _conditionIds = new bytes32[](1);
         _conditionIds[0] = _conditionId;
         ILMSRMarketMaker _marketMaker = lmsrMarketMakerFactory.createLMSRMarketMaker(
@@ -89,15 +96,26 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             msg.value
         );
         conditionalTokens.setApprovalForAll(address(_marketMaker), true);
+        // FIXME: use proper values here
+        bytes32 _realitioQuestionId = realitio.askQuestion(
+            2,
+            _realitioQuestion,
+            klerosArbitratorAddress,
+            7 days,
+            _endsAt,
+            0
+        );
         marketData[_conditionId] = MarketData({
             marketMaker: _marketMaker,
-            oracle: _oracle,
+            // FIXME: set oracle to a proper value
+            oracle: msg.sender,
             exists: true,
             creator: msg.sender,
             question: _question,
             timestamp: getTimestamp64(),
-            endsAt: endsAt,
-            questionId: _questionId
+            endsAt: _endsAt,
+            questionId: _questionId,
+            realitioQuestionId: _realitioQuestionId
         });
         emit CreateMarket(_conditionId, _outcomes);
     }
@@ -197,7 +215,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     /**
       * @notice Redeem position on a closed prediction market
       */
-    function redeemPositions(uint[] _indexSets, bytes32 _conditionId) external {
+    function redeemPositions(/* uint[] _indexSets, bytes32 _conditionId */) external {
         /* conditionalTokens.redeemPositions(weth9Token, bytes32(""), _conditionId, _indexSets);
         uint totalPayout = 0;
         uint den = conditionalTokens.payoutDenominator(_conditionId);

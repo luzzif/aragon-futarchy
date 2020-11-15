@@ -8,6 +8,7 @@ import { Box, Flex } from "reflexbox";
 import { MarketCard } from "../../components/market-card";
 import { Warning } from "../../components/warning";
 import { UndecoratedLink } from "../../components/undecorated-link";
+import { encodeQuestion } from "../../utils/realitio";
 
 export const Markets = () => {
     const { appState, api, connectedAccount } = useAragonApi();
@@ -26,12 +27,11 @@ export const Markets = () => {
     const handleMarketCreate = useCallback(
         (question, outcomes, funding, endsAt) => {
             api.createMarket(
-                connectedAccount,
                 asciiToHex(Date.now().toString().substring(0, 32)),
-                outcomes.length,
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
-                parseInt(DateTime.fromISO(endsAt).toJSDate().getTime() / 1000),
+                DateTime.fromISO(endsAt).toSeconds(),
+                encodeQuestion(question, outcomes, "Futarchy"),
                 {
                     from: connectedAccount,
                     value: toWei(funding.toString()),

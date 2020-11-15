@@ -1,7 +1,10 @@
 const { fromAscii, toWei, asciiToHex } = require("web3-utils");
+const { encodeQuestion } = require("./realitio");
 
 // eslint-disable-next-line no-undef
 const ILMSRMarketMaker = artifacts.require("ILMSRMarketMaker.sol");
+// eslint-disable-next-line no-undef
+const Realitio = artifacts.require("Realitio.sol");
 
 const newMarket = async (
     app,
@@ -12,13 +15,13 @@ const newMarket = async (
     etherCollateral
 ) => {
     const rawQuestionId = Date.now().toString();
+    const realitioQuestion = encodeQuestion(question, outcomes, "futarchy");
     const receipt = await app.createMarket(
-        user,
         fromAscii(rawQuestionId),
-        2,
         fromAscii(question),
         outcomes.map(fromAscii),
         endsAt,
+        realitioQuestion,
         { from: user, value: toWei(etherCollateral) }
     );
     const createMarketEvent = receipt.logs.find(
@@ -28,10 +31,20 @@ const newMarket = async (
         throw new Error("no create market event");
     }
     const { conditionId } = createMarketEvent.args;
-    const { marketMaker } = await app.marketData(conditionId);
+    const { marketMaker, realitioQuestionId } = await app.marketData(
+        conditionId
+    );
+    const realitioInstance = await Realitio.at(await app.realitio());
+    const contentHash = await realitioInstance.getContentHash(
+        realitioQuestionId
+    );
+    // eslint-disable-next-line no-undef
+    assert.exists(contentHash);
     return {
         conditionId,
+        realitioQuestionId,
         marketMakerInstance: await ILMSRMarketMaker.at(marketMaker),
+        contentHash,
     };
 };
 

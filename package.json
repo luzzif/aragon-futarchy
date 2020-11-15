@@ -20,26 +20,25 @@
         "lint": "yarn lint:code && yarn lint:prettier",
         "app:verify-initialization-parameters": "node ./scripts/initialization-check",
         "apm:versions": "aragon apm versions",
-        "rinkeby:install": "dao install 0xf514dc471920232B500e66295995576439E98eC2 futarchy-pm.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0xc778417E063141139Fce010982780140Aa0cD5Ab --set-permissions open"
-    },
-    "dependencies": {
-        "@aragon/os": "^4.4.0",
-        "@gnosis.pm/conditional-tokens-contracts": "^1.0.3",
-        "@gnosis.pm/conditional-tokens-market-makers": "^1.8.1",
-        "canonical-weth": "^1.4.0"
+        "rinkeby:install": "dao install 0xf514dc471920232B500e66295995576439E98eC2 futarchy-pm.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0xc778417E063141139Fce010982780140Aa0cD5Ab 0x3D00D77ee771405628a4bA4913175EcC095538da 0xcafa054b1b054581faf65adce667bf1c684b6ef0 --set-permissions open"
     },
     "devDependencies": {
         "@aragon/buidler-aragon": "^0.2.9",
         "@aragon/cli": "^7.1.6",
         "@aragon/contract-test-helpers": "0.0.1",
+        "@aragon/os": "^4.4.0",
         "@commitlint/cli": "^11.0.0",
         "@commitlint/config-conventional": "^11.0.0",
+        "@gnosis.pm/conditional-tokens-contracts": "^1.0.3",
+        "@gnosis.pm/conditional-tokens-market-makers": "^1.8.1",
         "@nomiclabs/buidler": "^1.4.7",
         "@nomiclabs/buidler-etherscan": "^1.3.0",
         "@nomiclabs/buidler-truffle5": "^1.3.0",
         "@nomiclabs/buidler-web3": "^1.3.0",
+        "@realitio/realitio-contracts": "^2.2.3",
         "@truffle/hdwallet-provider": "^1.1.1",
         "babel-eslint": "^10.1.0",
+        "canonical-weth": "^1.4.0",
         "dotenv": "^8.2.0",
         "eslint": "^7.9.0",
         "eslint-plugin-react": "^7.20.6",

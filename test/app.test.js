@@ -15,7 +15,13 @@ const FutarchyApp = artifacts.require("FutarchyApp.sol");
 
 // eslint-disable-next-line no-undef
 contract("FutarchyApp", ([appManager, user]) => {
-    let appBase, app, conditionalTokensInstance, collateralTokenAddress;
+    const arbitrationPrice = toWei("0.1");
+    let appBase,
+        app,
+        conditionalTokensInstance,
+        collateralTokenAddress,
+        realitioInstance,
+        realitioArbitratorProxyInstance;
 
     before("deploy base app", async () => {
         appBase = await FutarchyApp.new();
@@ -57,6 +63,13 @@ contract("FutarchyApp", ([appManager, user]) => {
             "LMSRMarketMakerFactory.sol"
         );
         const WETH9 = artifacts.require("WETH9.sol");
+        const Realitio = artifacts.require("Realitio.sol");
+        const CentralizedArbitrator = artifacts.require(
+            "CentralizedArbitrator.sol"
+        );
+        const RealitioArbitratorProxy = artifacts.require(
+            "RealitioArbitratorProxy.sol"
+        );
 
         const fixed192x64MathInstance = await Fixed192x64Math.new({
             from: appManager,
@@ -66,6 +79,19 @@ contract("FutarchyApp", ([appManager, user]) => {
         });
         const weth9Instance = await WETH9.new({ from: appManager });
         collateralTokenAddress = weth9Instance.address;
+        realitioInstance = await Realitio.new({ from: appManager });
+        const arbitratorInstance = await CentralizedArbitrator.new(
+            arbitrationPrice,
+            {
+                from: appManager,
+            }
+        );
+        realitioArbitratorProxyInstance = await RealitioArbitratorProxy.new(
+            arbitratorInstance.address,
+            asciiToHex(""),
+            realitioInstance.address,
+            { from: appManager }
+        );
 
         await LMSRMarketMakerFactory.link(fixed192x64MathInstance);
         const lsmrMarketMakerFactoryInstance = await LMSRMarketMakerFactory.new(
@@ -75,7 +101,9 @@ contract("FutarchyApp", ([appManager, user]) => {
         await app.initialize(
             conditionalTokensInstance.address,
             lsmrMarketMakerFactoryInstance.address,
-            weth9Instance.address
+            weth9Instance.address,
+            realitioInstance.address,
+            realitioArbitratorProxyInstance.address
         );
     });
 
@@ -223,8 +251,9 @@ contract("FutarchyApp", ([appManager, user]) => {
         });
     });
 
-    it("should let a user redeem their positions", async () => {
-        let { conditionId } = await newMarket(
+    // FIXME: make this run once proper position redeeming is implemented
+    it.skip("should let a user redeem their positions", async () => {
+        let { conditionId, marketMakerInstance } = await newMarket(
             app,
             user,
             "test-question",
@@ -234,8 +263,14 @@ contract("FutarchyApp", ([appManager, user]) => {
         );
         const wantedShares = toWei("1");
         const outcomeTokens = [wantedShares, "0"];
-        const netCost = await app.getNetCost(outcomeTokens, conditionId);
-        const fee = await app.getMarketFee(conditionId, netCost.toString());
+        const netCost = await marketMakerInstance.calcNetCost(
+            outcomeTokens,
+            conditionId
+        );
+        const fee = await marketMakerInstance.calcMarketFee(
+            conditionId,
+            netCost.toString()
+        );
         const totalCost = netCost.add(fee);
         await app.buy(conditionId, [wantedShares, "0"], totalCost.toString(), {
             from: user,

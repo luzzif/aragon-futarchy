@@ -147,7 +147,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
             </Field>
             <Field label="Ends at">
                 <TextInput
-                    type="date"
+                    type="datetime-local"
                     wide
                     value={endsAt}
                     onChange={handleTemporalValidityChange}
