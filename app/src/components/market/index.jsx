@@ -20,6 +20,7 @@ import { IconError } from "@aragon/ui";
 import lsmrMarketMakerAbi from "../../abi/lmsr-market-maker.json";
 import conditionalTokensAbi from "../../abi/conditional-tokens.json";
 import Link from "@aragon/ui/dist/Link";
+import lmsrMarketMakerAbi from "../../abi/lmsr-market-maker.json";
 
 export const Market = ({
     onBack,
@@ -41,6 +42,7 @@ export const Market = ({
     const [checked, setChecked] = useState(outcomes[0]);
     const [luxonTimestamp, setLuxonTimestamp] = useState(null);
     const [tradeable, setTradeable] = useState(null);
+    const [closed, setClosed] = useState(null);
     const [canSell, setCanSell] = useState(new BigNumber("0"));
     const [redeemable, setRedeemable] = useState(false);
     const [buying, setBuying] = useState(false);
@@ -56,6 +58,25 @@ export const Market = ({
     useEffect(() => {
         setTradeable(open && endsAt > parseInt(Date.now() / 1000));
     }, [endsAt, open]);
+
+    useEffect(() => {
+        async function fetchMarketMakerStageAndSetState() {
+            const marketData = await api
+                .call("marketData", conditionId)
+                .toPromise();
+            const marketMakerInstance = api.external(
+                marketData.marketMaker,
+                lmsrMarketMakerAbi
+            );
+            const marketMakerStage = await marketMakerInstance
+                .stage()
+                .toPromise();
+            // See https://github.com/gnosis/conditional-tokens-market-makers/blob/master/contracts/MarketMaker.sol#L47
+            // for all the possible stages.
+            setClosed(marketMakerStage === 2);
+        }
+        fetchMarketMakerStageAndSetState();
+    }, [endsAt, open, api, conditionId]);
 
     useEffect(() => {
         setCanSell(new BigNumber(fromWei(checked.balance)));
@@ -402,12 +423,12 @@ export const Market = ({
                     </AuiBox>
                     {(!tradeable || redeemable) && (
                         <AuiBox width="100%" heading="Actions" padding={20}>
-                            {!tradeable && (
+                            {!tradeable && !closed && (
                                 <Button mode="negative" onClick={onClose}>
                                     Close market
                                 </Button>
                             )}
-                            {redeemable && (
+                            {redeemable && closed && (
                                 <Button
                                     mode="positive"
                                     onClick={handleRedeemPositions}
