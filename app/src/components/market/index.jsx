@@ -15,15 +15,16 @@ import IconCheck from "@aragon/ui/dist/IconCheck";
 import Button from "@aragon/ui/dist/Button";
 import { TradingSidePanel } from "./trading-side-panel";
 import { useAragonApi } from "@aragon/api-react";
-import { toWei, fromWei } from "web3-utils";
-import { CloseSidePanel } from "./close-side-panel";
+import { toWei, fromWei, asciiToHex } from "web3-utils";
 import { IconError } from "@aragon/ui";
 import lsmrMarketMakerAbi from "../../abi/lmsr-market-maker.json";
+import conditionalTokensAbi from "../../abi/conditional-tokens.json";
+import Link from "@aragon/ui/dist/Link";
 
 export const Market = ({
     onBack,
     conditionId,
-    questionId,
+    realitioQuestionId,
     question,
     creator,
     outcomes,
@@ -33,7 +34,6 @@ export const Market = ({
     open,
     onTrade,
     onClose,
-    connectedAccount,
 }) => {
     const { api } = useAragonApi();
 
@@ -45,7 +45,6 @@ export const Market = ({
     const [redeemable, setRedeemable] = useState(false);
     const [buying, setBuying] = useState(false);
     const [selling, setSelling] = useState(false);
-    const [closing, setClosing] = useState(false);
     const [sharesAmount, setSharesAmount] = useState("");
     const [netCost, setNetCost] = useState("");
     const [fee, setFee] = useState("");
@@ -55,7 +54,7 @@ export const Market = ({
     }, [timestamp]);
 
     useEffect(() => {
-        setTradeable(open && endsAt > new Date().getTime() / 1000);
+        setTradeable(open && endsAt > parseInt(Date.now() / 1000));
     }, [endsAt, open]);
 
     useEffect(() => {
@@ -143,32 +142,24 @@ export const Market = ({
         [buying, checked, conditionId, onTrade, outcomes, selling, sharesAmount]
     );
 
-    const handleCloseMarket = useCallback(() => {
-        setClosing(true);
-    }, []);
-
-    const handleCloseMarketClose = useCallback(() => {
-        setClosing(false);
-    }, []);
-
-    const handleCloseMarketConfirm = useCallback(
-        (outcome) => {
-            onClose(
-                conditionId,
-                questionId,
-                outcomes.map((mappedOutcome) =>
-                    mappedOutcome === outcome ? "1" : "0"
+    const handleRedeemPositions = useCallback(async () => {
+        const conditionalTokensInstance = api.external(
+            await api.call("conditionalTokens").toPromise(),
+            conditionalTokensAbi
+        );
+        const collateralTokenAddress = await api.call("weth9Token").toPromise();
+        try {
+            await conditionalTokensInstance
+                .redeemPositions(
+                    collateralTokenAddress,
+                    asciiToHex(""),
+                    asciiToHex(conditionId),
+                    outcomes.map((_, index) => 1 << index)
                 )
-            );
-        },
-        [conditionId, onClose, outcomes, questionId]
-    );
-
-    const handleRedeemPositions = useCallback(() => {
-        api.redeemPositions(
-            outcomes.map((outcome, index) => index + 1),
-            conditionId
-        ).subscribe();
+                .toPromise();
+        } catch (error) {
+            console.error("could not redeem positions", error);
+        }
     }, [api, conditionId, outcomes]);
 
     return (
@@ -285,6 +276,28 @@ export const Market = ({
                                     color: ${theme.contentSecondary};
                                 `}
                             >
+                                Realitio question
+                            </Box>
+                            <Box
+                                mb="24px"
+                                css={`
+                                    ${textStyle("body2")}
+                                    color: ${theme.content};
+                                `}
+                            >
+                                <Link
+                                    href={`https://reality.eth.link/app/#!/question/${realitioQuestionId}`}
+                                >
+                                    See on Realitio
+                                </Link>
+                            </Box>
+                            <Box
+                                mb="8px"
+                                css={`
+                                    ${textStyle("label2")}
+                                    color: ${theme.contentSecondary};
+                                `}
+                            >
                                 Outcomes
                             </Box>
                             {outcomes.map((outcome, index) => {
@@ -387,14 +400,10 @@ export const Market = ({
                             )}
                         </Flex>
                     </AuiBox>
-                    {((tradeable && connectedAccount === creator) ||
-                        redeemable) && (
+                    {(!tradeable || redeemable) && (
                         <AuiBox width="100%" heading="Actions" padding={20}>
-                            {tradeable && (
-                                <Button
-                                    mode="negative"
-                                    onClick={handleCloseMarket}
-                                >
+                            {!tradeable && (
+                                <Button mode="negative" onClick={onClose}>
                                     Close market
                                 </Button>
                             )}
@@ -420,12 +429,6 @@ export const Market = ({
                 buy={buying}
                 outcomeLabel={checked.label.toLowerCase()}
                 onTrade={handleTrade}
-            />
-            <CloseSidePanel
-                open={closing}
-                onClose={handleCloseMarketClose}
-                outcomes={outcomes}
-                onConfirm={handleCloseMarketConfirm}
             />
         </>
     );

@@ -25,13 +25,13 @@ export const Markets = () => {
     }, []);
 
     const handleMarketCreate = useCallback(
-        (question, outcomes, funding, endsAt) => {
+        (question, outcomes, funding, endsAt, realitioTimeout) => {
             api.createMarket(
-                asciiToHex(Date.now().toString().substring(0, 32)),
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
                 DateTime.fromISO(endsAt).toSeconds(),
                 encodeQuestion(question, outcomes, "Futarchy"),
+                realitioTimeout,
                 {
                     from: connectedAccount,
                     value: toWei(funding.toString()),

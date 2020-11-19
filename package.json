@@ -20,7 +20,8 @@
         "lint": "yarn lint:code && yarn lint:prettier",
         "app:verify-initialization-parameters": "node ./scripts/initialization-check",
         "apm:versions": "aragon apm versions",
-        "rinkeby:install": "dao install 0xf514dc471920232B500e66295995576439E98eC2 futarchy-pm.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0xc778417E063141139Fce010982780140Aa0cD5Ab 0x3D00D77ee771405628a4bA4913175EcC095538da 0xcafa054b1b054581faf65adce667bf1c684b6ef0 --set-permissions open"
+        "rinkeby:install": "dao install 0x1c2511B07A9808beE6aF6d476C70275c7A419AD9 futarchy-pm.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0xc778417E063141139Fce010982780140Aa0cD5Ab 0x3D00D77ee771405628a4bA4913175EcC095538da 0xcafa054b1b054581faf65adce667bf1c684b6ef0 --set-permissions open",
+        "rinkeby:upgrade": "dao upgrade 0x1c2511B07A9808beE6aF6d476C70275c7A419AD9 futarchy-pm.open.aragonpm.eth --environment rinkeby"
     },
     "devDependencies": {
         "@aragon/buidler-aragon": "^0.2.9",
@@ -35,7 +36,6 @@
         "@nomiclabs/buidler-etherscan": "^1.3.0",
         "@nomiclabs/buidler-truffle5": "^1.3.0",
         "@nomiclabs/buidler-web3": "^1.3.0",
-        "@realitio/realitio-contracts": "^2.2.3",
         "@truffle/hdwallet-provider": "^1.1.1",
         "babel-eslint": "^10.1.0",
         "canonical-weth": "^1.4.0",
@@ -44,6 +44,7 @@
         "eslint-plugin-react": "^7.20.6",
         "eslint-plugin-react-hooks": "^4.1.2",
         "husky": "^4.3.0",
+        "luxon": "^1.25.0",
         "prettier": "^2.1.2",
         "web3": "^1.3.0"
     }

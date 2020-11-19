@@ -12,16 +12,16 @@ const newMarket = async (
     question,
     outcomes,
     endsAt,
-    etherCollateral
+    etherCollateral,
+    realitioTimeout
 ) => {
-    const rawQuestionId = Date.now().toString();
     const realitioQuestion = encodeQuestion(question, outcomes, "futarchy");
     const receipt = await app.createMarket(
-        fromAscii(rawQuestionId),
         fromAscii(question),
         outcomes.map(fromAscii),
         endsAt,
         realitioQuestion,
+        realitioTimeout,
         { from: user, value: toWei(etherCollateral) }
     );
     const createMarketEvent = receipt.logs.find(

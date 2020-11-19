@@ -69,6 +69,8 @@ interface IRealitio {
     function submitAnswerByArbitrator(bytes32 questionId, bytes32 answer, address answerer) external;
     function getHistoryHash(bytes32 questionId) external returns(bytes32);
     function commitments(bytes32 commitmentId) external returns(uint32, bool, bytes32);
+    function isFinalized(bytes32 questionId) external view returns (bool);
+    function resultFor(bytes32 questionId) external view returns (bytes32);
 }
 
 // Kleros contracts as seen in https://github.com/kleros/kleros-interaction

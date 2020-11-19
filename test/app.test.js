@@ -1,4 +1,5 @@
 /* eslint-disable no-undef */
+const { expect } = require("chai");
 const { newDao, newApp } = require("./helpers/dao");
 const { setOpenPermission } = require("./helpers/permissions");
 const { toWei, asciiToHex } = require("web3-utils");
@@ -56,6 +57,12 @@ contract("FutarchyApp", ([appManager, user]) => {
             await app.CLOSE_MARKET_ROLE(),
             appManager
         );
+        await setOpenPermission(
+            acl,
+            app.address,
+            await app.SET_REALITIO_TIMEOUT_ROLE(),
+            appManager
+        );
 
         const ConditionalTokens = artifacts.require("ConditionalTokens.sol");
         const Fixed192x64Math = artifacts.require("Fixed192x64Math.sol");
@@ -82,9 +89,7 @@ contract("FutarchyApp", ([appManager, user]) => {
         realitioInstance = await Realitio.new({ from: appManager });
         const arbitratorInstance = await CentralizedArbitrator.new(
             arbitrationPrice,
-            {
-                from: appManager,
-            }
+            { from: appManager }
         );
         realitioArbitratorProxyInstance = await RealitioArbitratorProxy.new(
             arbitratorInstance.address,
@@ -114,7 +119,8 @@ contract("FutarchyApp", ([appManager, user]) => {
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
-            "1"
+            "1",
+            1
         );
     });
 
@@ -125,7 +131,8 @@ contract("FutarchyApp", ([appManager, user]) => {
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
-            "1"
+            "1",
+            1
         );
         const wantedShares = toWei("0.123");
         const outcomeTokensAmount = [wantedShares, "0"];
@@ -156,7 +163,8 @@ contract("FutarchyApp", ([appManager, user]) => {
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
-            "1"
+            "1",
+            1
         );
         const wantedShares = toWei("1");
         const outcomeTokensAmount = [wantedShares, "0"];
@@ -206,7 +214,8 @@ contract("FutarchyApp", ([appManager, user]) => {
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
-            "1"
+            "1",
+            1
         );
         const wantedShares = toWei("1");
         const outcomeTokensAmount = [wantedShares, "0"];
@@ -234,72 +243,30 @@ contract("FutarchyApp", ([appManager, user]) => {
         );
     });
 
-    it("should let a user close a market", async () => {
-        let { conditionId } = await newMarket(
+    it("should let a user close a market", async function () {
+        let { conditionId, realitioQuestionId } = await newMarket(
             app,
             user,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000) + 1000,
-            "1"
+            parseInt(Date.now() / 1000),
+            "1",
+            2
         );
-        const { questionId } = await app.marketData(conditionId, {
-            from: user,
+        await realitioInstance.submitAnswer(realitioQuestionId, "0x0", 0, {
+            value: toWei("1"),
         });
-        await app.closeMarket(["1", "0"], conditionId, questionId, {
-            from: user,
+        await new Promise((resolve) => {
+            setTimeout(resolve, 3000);
         });
-    });
-
-    // FIXME: make this run once proper position redeeming is implemented
-    it.skip("should let a user redeem their positions", async () => {
-        let { conditionId, marketMakerInstance } = await newMarket(
-            app,
-            user,
-            "test-question",
-            ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000) + 1000,
-            "1"
+        const receipt = await app.closeMarket(conditionId, { from: user });
+        const closeMarketEvent = receipt.logs.find(
+            (log) => log.event === "CloseMarket"
         );
-        const wantedShares = toWei("1");
-        const outcomeTokens = [wantedShares, "0"];
-        const netCost = await marketMakerInstance.calcNetCost(
-            outcomeTokens,
-            conditionId
-        );
-        const fee = await marketMakerInstance.calcMarketFee(
-            conditionId,
-            netCost.toString()
-        );
-        const totalCost = netCost.add(fee);
-        await app.buy(conditionId, [wantedShares, "0"], totalCost.toString(), {
-            from: user,
-            value: totalCost.toString(),
-        });
-        const collateralTokenAddress = await app.weth9Token();
-        const collectionId = await app.getCollectionId(
-            asciiToHex(""),
-            conditionId,
-            1
-        );
-        const positionId = await app.getPositionId(
-            collateralTokenAddress,
-            collectionId
-        );
-        const onchainBalance = (
-            await conditionalTokensInstance.balanceOf(positionId, {
-                from: user,
-            })
-        ).toString();
-        assert.equal(onchainBalance, wantedShares);
-        const { questionId } = await app.marketData(conditionId, {
-            from: user,
-        });
-        await app.closeMarket(["1", "0"], conditionId, questionId, {
-            from: user,
-        });
-        await app.redeemPositions(["1", "2"], conditionId, {
-            from: user,
-        });
+        const { args } = closeMarketEvent;
+        expect(args.conditionId).to.be.equal(conditionId);
+        expect(args.payouts).to.have.length(2);
+        expect(args.payouts[0].toString()).to.be.equal("1");
+        expect(args.payouts[1].toString()).to.be.equal("0");
     });
 });

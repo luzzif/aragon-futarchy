@@ -7,7 +7,7 @@ import { Market as MarketComponent } from "../../components/market";
 export const Market = () => {
     const { conditionId } = useParams();
     const history = useHistory();
-    const { appState, api, connectedAccount } = useAragonApi();
+    const { appState, api } = useAragonApi();
     const { markets } = appState;
 
     const [selectedMarket, setSelectedMarket] = useState(null);
@@ -21,16 +21,9 @@ export const Market = () => {
         }
     }, [conditionId, markets]);
 
-    const handleClose = useCallback(
-        (conditionId, questionId, payouts) => {
-            api.closeMarket(
-                payouts,
-                conditionId,
-                questionId
-            ).subscribe(() => {}, console.error);
-        },
-        [api]
-    );
+    const handleClose = useCallback(() => {
+        api.closeMarket(conditionId).subscribe(() => {}, console.error);
+    }, [api, conditionId]);
 
     const handleBack = useCallback(() => {
         history.goBack();
@@ -64,7 +57,6 @@ export const Market = () => {
         <MarketComponent
             {...selectedMarket}
             onBack={handleBack}
-            connectedAccount={connectedAccount}
             onTrade={handleTrade}
             onClose={handleClose}
         />

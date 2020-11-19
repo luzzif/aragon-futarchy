@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Field, Button, TextInput, IconRemove } from "@aragon/ui";
+import { Field, Button, TextInput, IconRemove, Help } from "@aragon/ui/dist";
 import SidePanel from "@aragon/ui/dist/SidePanel";
 import styled from "styled-components";
 import { DateTime } from "luxon";
@@ -23,6 +23,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const [outcomes, setOutcomes] = useState([]);
     const [endsAt, setEndsAt] = useState("");
     const [funding, setFunding] = useState("");
+    const [realitioTimeout, setRealitioTimeout] = useState("");
 
     const handleQuestionChange = useCallback((event) => {
         setQuestion(event.target.value);
@@ -45,6 +46,10 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setFunding(event.target.value);
     }, []);
 
+    const handleRealitioTimeoutChange = useCallback((event) => {
+        setRealitioTimeout(event.target.value);
+    }, []);
+
     const handleOutcomeAddition = useCallback(() => {
         setOutcomes([...outcomes, outcome]);
         setOutcome("");
@@ -65,10 +70,18 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     };
 
     const handleCreate = useCallback(() => {
-        onCreate(question, outcomes, funding, endsAt);
+        onCreate(question, outcomes, funding, endsAt, realitioTimeout);
         onClose();
         resetState();
-    }, [onCreate, question, outcomes, funding, endsAt, onClose]);
+    }, [
+        onCreate,
+        question,
+        outcomes,
+        funding,
+        endsAt,
+        onClose,
+        realitioTimeout,
+    ]);
 
     const handleClose = useCallback(() => {
         onClose();
@@ -151,6 +164,27 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     wide
                     value={endsAt}
                     onChange={handleTemporalValidityChange}
+                />
+            </Field>
+            <Field label="Realitio timeout (seconds)">
+                <TextInput
+                    type="number"
+                    wide
+                    value={realitioTimeout}
+                    adornment={
+                        <Flex mx="8px">
+                            <Box>
+                                <Help hint="What does this mean?">
+                                    The amount of time expressed in seconds
+                                    anyone has to correctly answer the market's
+                                    question on Realitio, once the market is
+                                    closed and the outcome is known.
+                                </Help>
+                            </Box>
+                        </Flex>
+                    }
+                    adornmentPosition="end"
+                    onChange={handleRealitioTimeoutChange}
                 />
             </Field>
             <Button

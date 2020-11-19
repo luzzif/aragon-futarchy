@@ -5,7 +5,6 @@ import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "./Abstraction.sol";
 import "./ERC1155Receiver.sol";
 import "./Helpers.sol";
-import "@realitio/realitio-contracts/truffle/contracts/Realitio.sol";
 
 contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     using SafeMath for uint256;
@@ -24,8 +23,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         int netCollateralCost
     );
     event CreateMarket(bytes32 conditionId, bytes32[] outcomes);
-    event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp, uint[] marginalPricesAtClosure);
-    event RedeemPositions(address redeemer, bytes32 conditionId);
+    event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp);
 
     struct MarketData {
         ILMSRMarketMaker marketMaker;
@@ -33,8 +31,8 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         bytes32 realitioQuestionId;
         address creator;
         string question;
-        address oracle;
         uint timestamp;
+        uint outcomesAmount;
         uint32 endsAt;
         bool exists;
     }
@@ -45,17 +43,6 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     IRealitio public realitio;
     address public klerosArbitratorAddress;
     mapping(bytes32 => MarketData) public marketData;
-    mapping(address => mapping(bytes32 => bool)) public redeemedPositions;
-
-    modifier requiresMarketData(bytes32 _conditionId) {
-        require(marketData[_conditionId].exists, "NON_EXISTENT_CONDITION");
-        _;
-    }
-
-    modifier requiresApproval() {
-        require(conditionalTokens.isApprovedForAll(msg.sender, address(this)), "ABSENT_APPROVAL");
-        _;
-    }
 
     function initialize(
         address _conditionalTokensAddress,
@@ -76,15 +63,23 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
       * @notice Create a prediction market
       */
     function createMarket(
-            bytes32 _questionId,
             string _question,
             bytes32[] _outcomes,
             uint32 _endsAt,
-            string _realitioQuestion) external payable auth(CREATE_MARKET_ROLE) {
+            string _realitioQuestion,
+            uint32 _realitioTimeout) external payable auth(CREATE_MARKET_ROLE) {
         weth9Token.deposit.value(msg.value)();
         weth9Token.approve(address(lmsrMarketMakerFactory), msg.value);
-        conditionalTokens.prepareCondition(address(this), _questionId, _outcomes.length);
-        bytes32 _conditionId = conditionalTokens.getConditionId(address(this), _questionId, _outcomes.length);
+        conditionalTokens.prepareCondition(
+            address(this),
+            keccak256(abi.encodePacked(_endsAt)),
+            _outcomes.length
+        );
+        bytes32 _conditionId = conditionalTokens.getConditionId(
+            address(this),
+            keccak256(abi.encodePacked(_endsAt)),
+            _outcomes.length
+        );
         bytes32[] memory _conditionIds = new bytes32[](1);
         _conditionIds[0] = _conditionId;
         ILMSRMarketMaker _marketMaker = lmsrMarketMakerFactory.createLMSRMarketMaker(
@@ -101,20 +96,19 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             2,
             _realitioQuestion,
             klerosArbitratorAddress,
-            7 days,
+            _realitioTimeout,
             _endsAt,
             0
         );
         marketData[_conditionId] = MarketData({
             marketMaker: _marketMaker,
-            // FIXME: set oracle to a proper value
-            oracle: msg.sender,
             exists: true,
             creator: msg.sender,
             question: _question,
             timestamp: getTimestamp64(),
+            outcomesAmount: _outcomes.length,
             endsAt: _endsAt,
-            questionId: _questionId,
+            questionId: keccak256(abi.encodePacked(_endsAt)),
             realitioQuestionId: _realitioQuestionId
         });
         emit CreateMarket(_conditionId, _outcomes);
@@ -195,49 +189,33 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     }
 
     /**
-      * @notice Close a prediction market
+      * @notice Close the prediction market
       */
-    function closeMarket(
-            uint[] _payouts,
-            bytes32 _conditionId,
-            bytes32 _questionId) external auth(CLOSE_MARKET_ROLE) requiresMarketData(_conditionId) returns (int) {
-        MarketData storage data = marketData[_conditionId];
-        require(data.oracle == msg.sender, "INVALID_ORACLE");
-        uint[] memory _marginalPricesAtClosure = new uint[](_payouts.length);
-        for(uint8 _i = 0; _i < _payouts.length; _i++) {
-            _marginalPricesAtClosure[_i] = data.marketMaker.calcMarginalPrice(_i);
+    function closeMarket(bytes32 _conditionId) external requiresMarketData(_conditionId) {
+        MarketData _marketData = marketData[_conditionId];
+        require(_marketData.endsAt <= getTimestamp64(), "ONGOING_MARKET");
+        bytes32 _realitioQuestionId = _marketData.realitioQuestionId;
+        require(realitio.isFinalized(_realitioQuestionId), "NOT_FINALIZED");
+        uint _rightOutcomeIndex = uint(realitio.resultFor(_realitioQuestionId));
+        require(_rightOutcomeIndex < _marketData.outcomesAmount, "INVALID_REALITIO_ANSWER");
+        uint[] memory _payouts = new uint[](_marketData.outcomesAmount);
+        for (uint _i = 0; _i < _marketData.outcomesAmount; _i++) {
+            _payouts[_i] = _i == _rightOutcomeIndex ? 1 : 0;
         }
-        data.marketMaker.close();
-        conditionalTokens.reportPayouts(_questionId, _payouts);
-        emit CloseMarket(_conditionId, _payouts, getTimestamp64(), _marginalPricesAtClosure);
+        _marketData.marketMaker.close();
+        conditionalTokens.reportPayouts(_marketData.questionId, _payouts);
+        emit CloseMarket(_conditionId, _payouts, getTimestamp64());
     }
 
-    /**
-      * @notice Redeem position on a closed prediction market
-      */
-    function redeemPositions(/* uint[] _indexSets, bytes32 _conditionId */) external {
-        /* conditionalTokens.redeemPositions(weth9Token, bytes32(""), _conditionId, _indexSets);
-        uint totalPayout = 0;
-        uint den = conditionalTokens.payoutDenominator(_conditionId);
-        for (uint i = 0; i < _indexSets.length; i++) {
-            uint indexSet = _indexSets[i];
-            uint payoutNumerator = 0;
-            for (uint j = 0; j < _indexSets.length; j++) {
-                if (indexSet & (1 << j) != 0) {
-                    payoutNumerator = payoutNumerator.add(conditionalTokens.payoutNumerators(_conditionId,j));
-                }
-            }
-            uint _positionId = conditionalTokens.getPositionId(
-                weth9Token,
-                conditionalTokens.getCollectionId(bytes32(""), _conditionId, i + 1)
-            );
-            uint payoutStake = tokenHoldings[msg.sender][_positionId];
-            if (payoutStake > 0) {
-                totalPayout = totalPayout.add(payoutStake.mul(payoutNumerator).div(den));
-                tokenHoldings[msg.sender][_positionId] = 0;
-            }
-        }
-        weth9Token.transfer(msg.sender, totalPayout);
-        emit RedeemPositions(msg.sender, _conditionId); */
+    /// Modifiers
+
+    modifier requiresMarketData(bytes32 _conditionId) {
+        require(marketData[_conditionId].exists, "NON_EXISTENT_CONDITION");
+        _;
+    }
+
+    modifier requiresApproval() {
+        require(conditionalTokens.isApprovedForAll(msg.sender, address(this)), "ABSENT_APPROVAL");
+        _;
     }
 }

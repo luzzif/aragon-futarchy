@@ -93,6 +93,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
             timestamp,
             endsAt,
             questionId,
+            realitioQuestionId,
         } = await app.call("marketData", conditionId).toPromise();
         return {
             conditionId,
@@ -109,6 +110,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
             open: true,
             redeemed: false,
             questionId,
+            realitioQuestionId,
         };
     } catch (error) {
         console.error("error handling create market event", error);
@@ -160,27 +162,6 @@ const handleTrade = async (event, markets, selectedAccount) => {
     }
 };
 
-const handleRedeemPositions = async (event, markets, selectedAccount) => {
-    try {
-        const { returnValues } = event;
-        const { conditionId } = returnValues;
-        const marketIndex = markets.findIndex(
-            (market) => market.conditionId === conditionId
-        );
-        markets[marketIndex].redeemed = true;
-        markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
-            selectedAccount,
-            conditionId,
-            markets[marketIndex].outcomes.map((outcome) => outcome.label),
-            markets[marketIndex].payouts,
-            markets[marketIndex].marginalPricesAtClosure
-        );
-        return [...markets];
-    } catch (error) {
-        console.error("error handling redeem positions event", error);
-    }
-};
-
 app.store(async (state, action) => {
     const { event } = action;
     switch (event) {
@@ -219,16 +200,6 @@ app.store(async (state, action) => {
             return {
                 ...state,
                 markets: await handleTrade(
-                    action,
-                    state.markets,
-                    state.selectedAccount
-                ),
-            };
-        }
-        case "RedeemPositions": {
-            return {
-                ...state,
-                markets: await handleRedeemPositions(
                     action,
                     state.markets,
                     state.selectedAccount
