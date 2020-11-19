@@ -191,7 +191,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     /**
       * @notice Close the prediction market
       */
-    function closeMarket(bytes32 _conditionId) external requiresMarketData(_conditionId) {
+    function closeMarket(bytes32 _conditionId) external auth(CLOSE_MARKET_ROLE) requiresMarketData(_conditionId) {
         MarketData _marketData = marketData[_conditionId];
         require(_marketData.endsAt <= getTimestamp64(), "ONGOING_MARKET");
         bytes32 _realitioQuestionId = _marketData.realitioQuestionId;
