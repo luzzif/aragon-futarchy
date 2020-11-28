@@ -9,9 +9,10 @@ import { MarketCard } from "../../components/market-card";
 import { Warning } from "../../components/warning";
 import { UndecoratedLink } from "../../components/undecorated-link";
 import { encodeQuestion } from "../../utils/realitio";
+import { REALITIO_TIMEOUT } from "../../constants";
 
 export const Markets = () => {
-    const { appState, api, connectedAccount } = useAragonApi();
+    const { appState, api, connectedAccount, network } = useAragonApi();
     const { markets } = appState;
 
     const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -25,20 +26,20 @@ export const Markets = () => {
     }, []);
 
     const handleMarketCreate = useCallback(
-        (question, outcomes, funding, endsAt, realitioTimeout) => {
+        (question, outcomes, funding, endsAt) => {
             api.createMarket(
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
                 DateTime.fromISO(endsAt).toSeconds(),
                 encodeQuestion(question, outcomes, "Futarchy"),
-                realitioTimeout,
+                REALITIO_TIMEOUT[network.id],
                 {
                     from: connectedAccount,
                     value: toWei(funding.toString()),
                 }
             ).subscribe(() => {}, console.error);
         },
-        [api, connectedAccount]
+        [api, connectedAccount, network]
     );
 
     return (

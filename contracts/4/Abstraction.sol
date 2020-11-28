@@ -1,5 +1,7 @@
 pragma solidity ^0.4.24;
 
+import "@realitio/realitio-contracts/truffle/contracts/Realitio.sol";
+
 interface IConditionalTokens {
     function prepareCondition(address oracle, bytes32 questionId, uint outcomesAmount) external;
     function getConditionId(address oracle, bytes32 questionId, uint outcomeSlotCount) external pure returns (bytes32);
@@ -54,23 +56,6 @@ interface ILMSRMarketMakerFactory {
         address whitelist,
         uint funding
     ) external returns (ILMSRMarketMaker lmsrMarketMaker);
-}
-
-interface IRealitio {
-    function askQuestion(
-        uint256 templateId,
-        string question,
-        address arbitrator,
-        uint32 timeout,
-        uint32 openingTimestamp,
-        uint256 nonce
-    ) external payable returns (bytes32 questionId);
-    function notifyOfArbitrationRequest(bytes32 questionId, address requester, uint256 maxPrevious) external;
-    function submitAnswerByArbitrator(bytes32 questionId, bytes32 answer, address answerer) external;
-    function getHistoryHash(bytes32 questionId) external returns(bytes32);
-    function commitments(bytes32 commitmentId) external returns(uint32, bool, bytes32);
-    function isFinalized(bytes32 questionId) external view returns (bool);
-    function resultFor(bytes32 questionId) external view returns (bytes32);
 }
 
 // Kleros contracts as seen in https://github.com/kleros/kleros-interaction
@@ -215,7 +200,7 @@ contract RealitioArbitratorProxy is Arbitrable {
 
     uint public constant NUMBER_OF_CHOICES_FOR_ARBITRATOR = (2 ** 256) - 2;
     address public deployer;
-    IRealitio public realitio;
+    Realitio public realitio;
     mapping(uint => bytes32) public disputeIDToQuestionID;
     mapping(bytes32 => address) public questionIDToDisputer;
     mapping(bytes32 => bytes32) public questionIDToAnswer;
@@ -224,7 +209,7 @@ contract RealitioArbitratorProxy is Arbitrable {
     constructor(
         Arbitrator _arbitrator,
         bytes _arbitratorExtraData,
-        IRealitio _realitio
+        Realitio _realitio
     ) Arbitrable(_arbitrator, _arbitratorExtraData) public {
         deployer = msg.sender;
         realitio = _realitio;

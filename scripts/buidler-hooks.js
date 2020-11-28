@@ -22,7 +22,7 @@ module.exports = {
                 "LMSRMarketMakerFactory.sol"
             );
             const WETH9 = artifacts.require("WETH9.sol");
-            const Realitio = artifacts.require("Realitio");
+            const Realitio = artifacts.require("Realitio.sol");
             const CentralizedArbitrator = artifacts.require(
                 "CentralizedArbitrator.sol"
             );

@@ -40,7 +40,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     IConditionalTokens public conditionalTokens;
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
     IWETH9 public weth9Token;
-    IRealitio public realitio;
+    Realitio public realitio;
     address public klerosArbitratorAddress;
     mapping(bytes32 => MarketData) public marketData;
 
@@ -54,7 +54,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         conditionalTokens = IConditionalTokens(_conditionalTokensAddress);
         lmsrMarketMakerFactory = ILMSRMarketMakerFactory(_marketMakerFactoryAddress);
         weth9Token = IWETH9(_weth9TokenAddress);
-        realitio = IRealitio(_realitioAddress);
+        realitio = Realitio(_realitioAddress);
         klerosArbitratorAddress = _klerosArbitratorAddress;
         initialized();
     }
@@ -197,7 +197,6 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         bytes32 _realitioQuestionId = _marketData.realitioQuestionId;
         require(realitio.isFinalized(_realitioQuestionId), "NOT_FINALIZED");
         uint _rightOutcomeIndex = uint(realitio.resultFor(_realitioQuestionId));
-        require(_rightOutcomeIndex < _marketData.outcomesAmount, "INVALID_REALITIO_ANSWER");
         uint[] memory _payouts = new uint[](_marketData.outcomesAmount);
         for (uint _i = 0; _i < _marketData.outcomesAmount; _i++) {
             _payouts[_i] = _i == _rightOutcomeIndex ? 1 : 0;

@@ -57,12 +57,6 @@ contract("FutarchyApp", ([appManager, user]) => {
             await app.CLOSE_MARKET_ROLE(),
             appManager
         );
-        await setOpenPermission(
-            acl,
-            app.address,
-            await app.SET_REALITIO_TIMEOUT_ROLE(),
-            appManager
-        );
 
         const ConditionalTokens = artifacts.require("ConditionalTokens.sol");
         const Fixed192x64Math = artifacts.require("Fixed192x64Math.sol");

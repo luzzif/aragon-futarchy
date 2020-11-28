@@ -48,11 +48,12 @@ const getUpdatedOutcomesInformation = async (
         );
         for (let i = 0; i < outcomeLabels.length; i++) {
             let balance = "0";
+            let positionId = "";
             if (selectedAccount) {
                 const collectionId = await conditionalTokensInstance
                     .getCollectionId(asciiToHex(""), conditionId, i + 1)
                     .toPromise();
-                const positionId = await conditionalTokensInstance
+                positionId = await conditionalTokensInstance
                     .getPositionId(collateralTokenAddress, collectionId)
                     .toPromise();
                 balance = await conditionalTokensInstance
@@ -69,6 +70,7 @@ const getUpdatedOutcomesInformation = async (
             }
             outcomes.push({
                 label: outcomeLabels[i],
+                positionId,
                 balance,
                 price: new BigNumber(price)
                     .dividedBy(new BigNumber("2").pow("64"))

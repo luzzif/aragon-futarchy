@@ -1,13 +1,17 @@
-import React, { useState, useCallback } from "react";
-import { Field, Button, TextInput, IconRemove, Help } from "@aragon/ui/dist";
+import React, { useState, useCallback, useEffect } from "react";
+import { Field, Button, TextInput, IconRemove } from "@aragon/ui/dist";
 import SidePanel from "@aragon/ui/dist/SidePanel";
 import styled from "styled-components";
 import { DateTime } from "luxon";
 import { Box, Flex } from "reflexbox";
 import { useTheme } from "@aragon/ui/dist/Theme";
+import { REALITIO_TIMEOUT } from "../../constants";
+import { useAragonApi } from "@aragon/api-react";
+import BigNumber from "bignumber.js";
+import Info from "@aragon/ui/dist/Info";
 
 const Margin = styled.div`
-    height: 8px;
+    height: 16px;
 `;
 
 const OutcomesContainer = styled(Flex)`
@@ -17,6 +21,7 @@ const OutcomesContainer = styled(Flex)`
 
 export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const theme = useTheme();
+    const { network } = useAragonApi();
 
     const [question, setQuestion] = useState("");
     const [outcome, setOutcome] = useState("");
@@ -24,6 +29,13 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const [endsAt, setEndsAt] = useState("");
     const [funding, setFunding] = useState("");
     const [realitioTimeout, setRealitioTimeout] = useState("");
+
+    useEffect(() => {
+        if (network && !realitioTimeout) {
+            console.log(REALITIO_TIMEOUT[network.id]);
+            setRealitioTimeout(REALITIO_TIMEOUT[network.id]);
+        }
+    }, [network, realitioTimeout]);
 
     const handleQuestionChange = useCallback((event) => {
         setQuestion(event.target.value);
@@ -46,10 +58,6 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
         setFunding(event.target.value);
     }, []);
 
-    const handleRealitioTimeoutChange = useCallback((event) => {
-        setRealitioTimeout(event.target.value);
-    }, []);
-
     const handleOutcomeAddition = useCallback(() => {
         setOutcomes([...outcomes, outcome]);
         setOutcome("");
@@ -62,26 +70,23 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     };
 
     const resetState = () => {
-        setQuestion("");
-        setOutcome("");
-        setOutcomes([]);
-        setFunding("");
-        setEndsAt("");
+        // the timeout is to make the close animation
+        // end on the side panel before resetting the state
+        // to avoid bad-looking flickering
+        setTimeout(() => {
+            setQuestion("");
+            setOutcome("");
+            setOutcomes([]);
+            setFunding("");
+            setEndsAt("");
+        }, 300);
     };
 
     const handleCreate = useCallback(() => {
-        onCreate(question, outcomes, funding, endsAt, realitioTimeout);
+        onCreate(question, outcomes, funding, endsAt);
         onClose();
         resetState();
-    }, [
-        onCreate,
-        question,
-        outcomes,
-        funding,
-        endsAt,
-        onClose,
-        realitioTimeout,
-    ]);
+    }, [onCreate, question, outcomes, funding, endsAt, onClose]);
 
     const handleClose = useCallback(() => {
         onClose();
@@ -166,27 +171,23 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     onChange={handleTemporalValidityChange}
                 />
             </Field>
-            <Field label="Realitio timeout (seconds)">
-                <TextInput
-                    type="number"
-                    wide
-                    value={realitioTimeout}
-                    adornment={
-                        <Flex mx="8px">
-                            <Box>
-                                <Help hint="What does this mean?">
-                                    The amount of time expressed in seconds
-                                    anyone has to correctly answer the market's
-                                    question on Realitio, once the market is
-                                    closed and the outcome is known.
-                                </Help>
-                            </Box>
-                        </Flex>
-                    }
-                    adornmentPosition="end"
-                    onChange={handleRealitioTimeoutChange}
-                />
-            </Field>
+            <Info>
+                Once the market reaches its end time, people will have a maximum
+                of {realitioTimeout} seconds (equivalent to{" "}
+                {new BigNumber(realitioTimeout)
+                    .dividedBy(60)
+                    .decimalPlaces(2)
+                    .toString()}{" "}
+                hours or{" "}
+                {new BigNumber(realitioTimeout)
+                    .dividedBy(60)
+                    .dividedBy(24)
+                    .decimalPlaces(2)
+                    .toString()}{" "}
+                days) to confirm on-chain, on Reality.eth, that a certain
+                outcome has in fact happened.
+            </Info>
+            <Margin />
             <Button
                 mode="strong"
                 wide
