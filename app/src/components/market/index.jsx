@@ -13,6 +13,7 @@ import { Split } from "@aragon/ui/dist/Split";
 import Header from "@aragon/ui/dist/Header";
 import { StatusCard } from "./status-card";
 import { TradingCard } from "./trading-card";
+import { abi as realitioAbi } from "@realitio/realitio-contracts/truffle/build/contracts/Realitio.json";
 
 export const Market = ({
     onBack,
@@ -21,7 +22,6 @@ export const Market = ({
     timestamp,
     creator,
     conditionId,
-    realitioTimeout,
     outcomes,
     endsAt,
     redeemed,
@@ -31,8 +31,8 @@ export const Market = ({
     const { api } = useAragonApi();
 
     const [tradeable, setTradeable] = useState(null);
+    const [closeable, setCloseable] = useState(false);
     const [expired, setExpired] = useState(false);
-    const [realitioTimeoutExpired, setRealitioTimeoutExpired] = useState(false);
     const [redeemable, setRedeemable] = useState(false);
 
     useEffect(() => {
@@ -40,11 +40,20 @@ export const Market = ({
     }, [endsAt]);
 
     useEffect(() => {
-        setRealitioTimeoutExpired(
-            parseInt(endsAt) + parseInt(realitioTimeout) <
-                parseInt(Date.now() / 1000)
-        );
-    }, [endsAt, realitioTimeout]);
+        const findAndSetCloseable = async () => {
+            const realitioInstance = api.external(
+                await api.call("realitio").toPromise(),
+                realitioAbi
+            );
+            const finalized = await realitioInstance.call(
+                "isFinalized",
+                realitioQuestionId
+            );
+            console.log(finalized);
+            setCloseable(finalized);
+        };
+        findAndSetCloseable();
+    }, [api, realitioQuestionId]);
 
     useEffect(() => {
         setTradeable(open && !expired);
@@ -122,24 +131,19 @@ export const Market = ({
                                         </Box>
                                     )}
                                     <Box mb="20px">
-                                        {((!tradeable &&
-                                            open &&
-                                            realitioTimeoutExpired) ||
-                                            redeemable) && (
+                                        {(closeable || redeemable) && (
                                             <AuiBox
                                                 width="100%"
                                                 heading="Actions"
                                             >
-                                                {!tradeable &&
-                                                    realitioTimeoutExpired &&
-                                                    open && (
-                                                        <Button
-                                                            mode="negative"
-                                                            onClick={onClose}
-                                                        >
-                                                            Close market
-                                                        </Button>
-                                                    )}
+                                                {closeable && open && (
+                                                    <Button
+                                                        mode="negative"
+                                                        onClick={onClose}
+                                                    >
+                                                        Close market
+                                                    </Button>
+                                                )}
                                                 {redeemable && (
                                                     <Button
                                                         mode="positive"

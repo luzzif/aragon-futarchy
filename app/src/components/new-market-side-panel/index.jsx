@@ -171,8 +171,9 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                 />
             </Field>
             <Info>
-                Once the market reaches its end time, people will have a maximum
-                of {realitioTimeout} seconds (equivalent to{" "}
+                Once the market reaches its end time, people will be able to
+                post answers on Reality.eth. To correct a wrong answer, people
+                will have a maximum of {realitioTimeout} seconds (equivalent to{" "}
                 {new BigNumber(realitioTimeout)
                     .dividedBy(60)
                     .dividedBy(60)
@@ -184,8 +185,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     .dividedBy(24)
                     .decimalPlaces(2)
                     .toString()}{" "}
-                days) to confirm on-chain, on Reality.eth, that a certain
-                outcome has in fact happened.
+                days).
             </Info>
             <Margin />
             <Button

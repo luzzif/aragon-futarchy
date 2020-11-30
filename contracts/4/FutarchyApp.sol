@@ -26,8 +26,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         address creator,
         uint timestamp,
         bytes32 conditionId,
-        bytes32[] outcomes,
-        uint32 realitioTimeout
+        bytes32[] outcomes
     );
     event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp);
 
@@ -117,8 +116,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             msg.sender,
             getTimestamp64(),
             _conditionId,
-            _outcomes,
-            _realitioTimeout
+            _outcomes
         );
     }
 
