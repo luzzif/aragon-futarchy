@@ -49,21 +49,23 @@ export const StatusCard = ({ open, endsAt, expired, tradeable }) => {
 
     return (
         <AuiBox heading="Status">
-            <Flex alignItems="center">
-                <Box color={getStatusColor()} mr="2px">
-                    {getStatusIcon()}
-                </Box>
-                <Box
-                    color={getStatusColor()}
-                    css={`
-                        ${textStyle("body2")}
-                    `}
-                    pb="4px"
-                >
-                    {getStatusText()}{" "}
-                </Box>
+            <Flex flexDirection="column">
+                <Flex alignItems="center">
+                    <Box color={getStatusColor()} mr="2px">
+                        {getStatusIcon()}
+                    </Box>
+                    <Box
+                        color={getStatusColor()}
+                        css={`
+                            ${textStyle("body2")}
+                        `}
+                        pb="4px"
+                    >
+                        {getStatusText()}{" "}
+                    </Box>
+                </Flex>
                 {tradeable && (
-                    <Box ml="8px" pb="4px">
+                    <Box mt="8px">
                         <Timer end={new Date(endsAt * 1000)} />
                     </Box>
                 )}

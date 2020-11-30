@@ -22,7 +22,7 @@ export const TradeDetail = ({ title, value, currency }) => {
                     color: ${theme.content};
                 `}
             >
-                {value || value === "0" ? "-" : value}{" "}
+                {!value || value === "0" ? "-" : value}{" "}
                 {value && value !== "0" && currency}
             </Box>
         </Flex>

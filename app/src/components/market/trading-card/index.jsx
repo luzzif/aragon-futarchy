@@ -94,6 +94,10 @@ export const TradingCard = ({ outcomes, conditionId }) => {
         };
         if (outcome && amount) {
             getTradeDetails();
+        } else {
+            setNetCost(new BigNumber(0));
+            setFee(new BigNumber(0));
+            setTotalCost(new BigNumber(0));
         }
     }, [amount, api, buy, conditionId, outcome, outcomes]);
 

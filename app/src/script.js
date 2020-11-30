@@ -91,7 +91,6 @@ const handleCreateMarket = async (event, selectedAccount) => {
             creator,
             conditionId,
             outcomes: outcomeLabels,
-            realitioTimeout,
             timestamp,
         } = returnValues;
         const {
@@ -103,7 +102,6 @@ const handleCreateMarket = async (event, selectedAccount) => {
         return {
             conditionId,
             creator,
-            realitioTimeout,
             question: hexToAscii(removeTrailingZeroes(question)),
             outcomes: await getUpdatedOutcomesInformation(
                 selectedAccount,
