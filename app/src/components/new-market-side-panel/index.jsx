@@ -32,7 +32,6 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
 
     useEffect(() => {
         if (network && !realitioTimeout) {
-            console.log(REALITIO_TIMEOUT[network.id]);
             setRealitioTimeout(REALITIO_TIMEOUT[network.id]);
         }
     }, [network, realitioTimeout]);
@@ -175,6 +174,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                 Once the market reaches its end time, people will have a maximum
                 of {realitioTimeout} seconds (equivalent to{" "}
                 {new BigNumber(realitioTimeout)
+                    .dividedBy(60)
                     .dividedBy(60)
                     .decimalPlaces(2)
                     .toString()}{" "}

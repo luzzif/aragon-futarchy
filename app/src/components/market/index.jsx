@@ -21,6 +21,7 @@ export const Market = ({
     timestamp,
     creator,
     conditionId,
+    realitioTimeout,
     outcomes,
     endsAt,
     redeemed,
@@ -31,11 +32,19 @@ export const Market = ({
 
     const [tradeable, setTradeable] = useState(null);
     const [expired, setExpired] = useState(false);
+    const [realitioTimeoutExpired, setRealitioTimeoutExpired] = useState(false);
     const [redeemable, setRedeemable] = useState(false);
 
     useEffect(() => {
         setExpired(endsAt < parseInt(Date.now() / 1000));
     }, [endsAt]);
+
+    useEffect(() => {
+        setRealitioTimeoutExpired(
+            parseInt(endsAt) + parseInt(realitioTimeout) <
+                parseInt(Date.now() / 1000)
+        );
+    }, [endsAt, realitioTimeout]);
 
     useEffect(() => {
         setTradeable(open && !expired);
@@ -113,19 +122,24 @@ export const Market = ({
                                         </Box>
                                     )}
                                     <Box mb="20px">
-                                        {(!tradeable || redeemable) && (
+                                        {((!tradeable &&
+                                            open &&
+                                            realitioTimeoutExpired) ||
+                                            redeemable) && (
                                             <AuiBox
                                                 width="100%"
                                                 heading="Actions"
                                             >
-                                                {!tradeable && open && (
-                                                    <Button
-                                                        mode="negative"
-                                                        onClick={onClose}
-                                                    >
-                                                        Close market
-                                                    </Button>
-                                                )}
+                                                {!tradeable &&
+                                                    realitioTimeoutExpired &&
+                                                    open && (
+                                                        <Button
+                                                            mode="negative"
+                                                            onClick={onClose}
+                                                        >
+                                                            Close market
+                                                        </Button>
+                                                    )}
                                                 {redeemable && (
                                                     <Button
                                                         mode="positive"

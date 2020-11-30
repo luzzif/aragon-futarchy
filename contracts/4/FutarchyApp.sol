@@ -22,16 +22,20 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         uint timestamp,
         int netCollateralCost
     );
-    event CreateMarket(bytes32 conditionId, bytes32[] outcomes);
+    event CreateMarket(
+        address creator,
+        uint timestamp,
+        bytes32 conditionId,
+        bytes32[] outcomes,
+        uint32 realitioTimeout
+    );
     event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp);
 
     struct MarketData {
         ILMSRMarketMaker marketMaker;
+        string question;
         bytes32 questionId;
         bytes32 realitioQuestionId;
-        address creator;
-        string question;
-        uint timestamp;
         uint outcomesAmount;
         uint32 endsAt;
         bool exists;
@@ -103,15 +107,19 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         marketData[_conditionId] = MarketData({
             marketMaker: _marketMaker,
             exists: true,
-            creator: msg.sender,
-            question: _question,
-            timestamp: getTimestamp64(),
             outcomesAmount: _outcomes.length,
             endsAt: _endsAt,
             questionId: keccak256(abi.encodePacked(_endsAt)),
-            realitioQuestionId: _realitioQuestionId
+            realitioQuestionId: _realitioQuestionId,
+            question: _question
         });
-        emit CreateMarket(_conditionId, _outcomes);
+        emit CreateMarket(
+            msg.sender,
+            getTimestamp64(),
+            _conditionId,
+            _outcomes,
+            _realitioTimeout
+        );
     }
 
     /**

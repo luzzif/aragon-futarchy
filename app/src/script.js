@@ -87,20 +87,23 @@ const getUpdatedOutcomesInformation = async (
 const handleCreateMarket = async (event, selectedAccount) => {
     try {
         const { returnValues } = event;
-        const { conditionId, outcomes: outcomeLabels } = returnValues;
         const {
             creator,
-            oracle,
-            question,
+            conditionId,
+            outcomes: outcomeLabels,
+            realitioTimeout,
             timestamp,
+        } = returnValues;
+        const {
             endsAt,
             questionId,
             realitioQuestionId,
+            question,
         } = await app.call("marketData", conditionId).toPromise();
         return {
             conditionId,
             creator,
-            oracle,
+            realitioTimeout,
             question: hexToAscii(removeTrailingZeroes(question)),
             outcomes: await getUpdatedOutcomesInformation(
                 selectedAccount,
