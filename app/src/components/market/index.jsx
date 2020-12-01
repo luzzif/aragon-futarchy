@@ -14,6 +14,7 @@ import Header from "@aragon/ui/dist/Header";
 import { StatusCard } from "./status-card";
 import { TradingCard } from "./trading-card";
 import { abi as realitioAbi } from "@realitio/realitio-contracts/truffle/build/contracts/Realitio.json";
+import Link from "@aragon/ui/dist/Link";
 
 export const Market = ({
     onBack,
@@ -31,7 +32,7 @@ export const Market = ({
     const { api } = useAragonApi();
 
     const [tradeable, setTradeable] = useState(null);
-    const [closeable, setCloseable] = useState(false);
+    const [finalized, setFinalized] = useState(false);
     const [expired, setExpired] = useState(false);
     const [redeemable, setRedeemable] = useState(false);
 
@@ -45,12 +46,10 @@ export const Market = ({
                 await api.call("realitio").toPromise(),
                 realitioAbi
             );
-            const finalized = await realitioInstance.call(
-                "isFinalized",
-                realitioQuestionId
-            );
-            console.log(finalized);
-            setCloseable(finalized);
+            const finalized = await realitioInstance
+                .isFinalized(realitioQuestionId)
+                .toPromise();
+            setFinalized(finalized);
         };
         findAndSetCloseable();
     }, [api, realitioQuestionId]);
@@ -131,31 +130,43 @@ export const Market = ({
                                         </Box>
                                     )}
                                     <Box mb="20px">
-                                        {(closeable || redeemable) && (
-                                            <AuiBox
-                                                width="100%"
-                                                heading="Actions"
-                                            >
-                                                {closeable && open && (
-                                                    <Button
-                                                        mode="negative"
-                                                        onClick={onClose}
-                                                    >
-                                                        Close market
+                                        <AuiBox width="100%" heading="Actions">
+                                            {!finalized && expired && (
+                                                <Link
+                                                    href={`https://reality.eth.link/app/#!/question/${realitioQuestionId}`}
+                                                    css={`
+                                                        text-decoration: none;
+                                                        outline: none;
+                                                    `}
+                                                >
+                                                    <Button mode="positive">
+                                                        Finalize on Reality.eth
                                                     </Button>
-                                                )}
-                                                {redeemable && (
-                                                    <Button
-                                                        mode="positive"
-                                                        onClick={
-                                                            handleRedeemPositions
-                                                        }
-                                                    >
-                                                        Redeem positions
-                                                    </Button>
-                                                )}
-                                            </AuiBox>
-                                        )}
+                                                </Link>
+                                            )}
+                                            {finalized && open && (
+                                                <Button
+                                                    mode="negative"
+                                                    onClick={onClose}
+                                                >
+                                                    Close market
+                                                </Button>
+                                            )}
+                                            {redeemable && (
+                                                <Button
+                                                    mode="positive"
+                                                    onClick={
+                                                        handleRedeemPositions
+                                                    }
+                                                >
+                                                    Redeem positions
+                                                </Button>
+                                            )}
+                                            {!redeemable &&
+                                                !finalized &&
+                                                !expired &&
+                                                "No actions to perform"}
+                                        </AuiBox>
                                     </Box>
                                 </Flex>
                             </>

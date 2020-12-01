@@ -3,11 +3,11 @@ import Link from "@aragon/ui/dist/Link";
 import IdentityBadge from "@aragon/ui/dist/IdentityBadge";
 import { DateTime } from "luxon";
 import { Section } from "../../section";
-import Distribution from "@aragon/ui/dist/Distribution";
-import { Flex } from "reflexbox";
+import { Box, Flex } from "reflexbox";
 import AuiBox from "@aragon/ui/dist/Box";
-import BigNumber from "bignumber.js";
 import { Split } from "@aragon/ui/dist/Split";
+import { OutcomeBar } from "../../outcome-bar";
+import { OUTCOME_BAR_COLORS } from "../../../constants";
 
 export const InfoCard = ({
     realitioQuestionId,
@@ -29,7 +29,7 @@ export const InfoCard = ({
                 />
                 <Split
                     primary={
-                        <Section title="Open since">
+                        <Section title="Opened">
                             {timestamp &&
                                 DateTime.fromSeconds(timestamp).toLocaleString(
                                     DateTime.DATETIME_SHORT
@@ -37,25 +37,31 @@ export const InfoCard = ({
                         </Section>
                     }
                     secondary={
-                        <Section title="Realitio">
+                        <Section title="Reality.eth">
                             <Link
                                 href={`https://reality.eth.link/app/#!/question/${realitioQuestionId}`}
                             >
-                                See on Reality.eth
+                                See Reality.eth question
                             </Link>
                         </Section>
                     }
                 />
                 <Section title="Outcomes">
-                    <Distribution
-                        items={outcomes.map((outcome) => ({
-                            item: outcome.label,
-                            percentage: new BigNumber(outcome.price)
-                                .multipliedBy("100")
-                                .decimalPlaces(2)
-                                .toNumber(),
-                        }))}
-                    />
+                    <Flex flexDirection="column">
+                        {outcomes.map((outcome, index) => (
+                            <Box key={outcome.positionId} mb="12px">
+                                <OutcomeBar
+                                    label={outcome.label}
+                                    price={outcome.price}
+                                    color={
+                                        OUTCOME_BAR_COLORS[
+                                            index % OUTCOME_BAR_COLORS.length
+                                        ]
+                                    }
+                                />
+                            </Box>
+                        ))}
+                    </Flex>
                 </Section>
             </Flex>
         </AuiBox>

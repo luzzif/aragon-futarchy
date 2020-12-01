@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useAragonApi } from "@aragon/api-react";
 import { asciiToHex, toWei } from "web3-utils";
 import { DateTime } from "luxon";
@@ -6,16 +6,36 @@ import { Button, EmptyStateCard, Header } from "@aragon/ui";
 import { NewMarketSidePanel } from "../../components/new-market-side-panel";
 import { Box, Flex } from "reflexbox";
 import { MarketCard } from "../../components/market-card";
-import { Warning } from "../../components/warning";
-import { UndecoratedLink } from "../../components/undecorated-link";
 import { encodeQuestion } from "../../utils/realitio";
 import { REALITIO_TIMEOUT } from "../../constants";
+import { GU } from "@aragon/ui/dist/constants";
+import { useHistory } from "react-router-dom";
+import Bar from "@aragon/ui/dist/Bar";
+import DateRangePicker from "@aragon/ui/dist/DateRangePicker";
 
 export const Markets = () => {
+    const history = useHistory();
     const { appState, api, connectedAccount, network } = useAragonApi();
-    const { markets } = appState;
 
     const [sidePanelOpen, setSidePanelOpen] = useState(false);
+    const [dateFilter, setDateFilter] = useState({ start: null, end: null });
+    const [filteredMarkets, setFilteredMarkets] = useState(appState.markets);
+
+    useEffect(() => {
+        if (dateFilter.start && dateFilter.end) {
+            const parsedFrom = dateFilter.start.getTime() / 1000;
+            const parsedTo = dateFilter.end.getTime() / 1000;
+            setFilteredMarkets(
+                appState.markets.filter(
+                    (market) =>
+                        parsedFrom >= market.timestamp &&
+                        market.timestamp <= parsedTo
+                )
+            );
+        } else {
+            setFilteredMarkets(appState.markets);
+        }
+    }, [appState.markets, dateFilter]);
 
     const handleNewMarketOpen = useCallback(() => {
         setSidePanelOpen(true);
@@ -24,6 +44,13 @@ export const Markets = () => {
     const handleNewMarketClose = useCallback(() => {
         setSidePanelOpen(false);
     }, []);
+
+    const handleMarketClick = useCallback(
+        (conditionId) => {
+            history.push(`/markets/${conditionId}`);
+        },
+        [history]
+    );
 
     const handleMarketCreate = useCallback(
         (question, outcomes, funding, endsAt) => {
@@ -54,42 +81,55 @@ export const Markets = () => {
                     />
                 }
             />
-            <NewMarketSidePanel
-                open={sidePanelOpen}
-                onClose={handleNewMarketClose}
-                onCreate={handleMarketCreate}
-            />
-            {markets && markets.length > 0 ? (
+            <Bar>
+                <div
+                    css={`
+                        height: ${8 * GU}px;
+                        display: grid;
+                        grid-template-columns: auto auto auto 1fr;
+                        grid-gap: ${1 * GU}px;
+                        align-items: center;
+                        padding-left: ${3 * GU}px;
+                    `}
+                >
+                    <DateRangePicker
+                        startDate={dateFilter.start}
+                        endDate={dateFilter.end}
+                        onChange={setDateFilter}
+                        format="YYYY/MM/DD"
+                    />
+                </div>
+            </Bar>
+            {filteredMarkets.length > 0 ? (
                 <Flex flexDirection="column">
-                    <Box mb="20px" mt="20px" px={3}>
-                        <Warning />
-                    </Box>
-                    <Flex flexWrap="wrap" width="100%">
-                        {markets.map((market) => {
-                            const { conditionId } = market;
-                            return (
-                                <Box
-                                    width={[1, 1 / 2, 1 / 3]}
-                                    key={conditionId}
-                                    p={3}
-                                >
-                                    <UndecoratedLink
-                                        to={`/market/${conditionId}`}
-                                    >
-                                        <MarketCard {...market} />
-                                    </UndecoratedLink>
-                                </Box>
-                            );
-                        })}
+                    <Flex flexWrap="wrap" m="-16px">
+                        {filteredMarkets.map((market) => (
+                            <Box
+                                m="16px"
+                                height={200}
+                                maxHeight={200}
+                                key={market.conditionId}
+                            >
+                                <MarketCard
+                                    onClick={handleMarketClick}
+                                    {...market}
+                                />
+                            </Box>
+                        ))}
                     </Flex>
                 </Flex>
             ) : (
                 <Flex width="100%" mt={36} justifyContent="center">
                     <Box>
-                        <EmptyStateCard text="Still no markets here. Create one with the button above." />
+                        <EmptyStateCard text="There's nothing here." />
                     </Box>
                 </Flex>
             )}
+            <NewMarketSidePanel
+                open={sidePanelOpen}
+                onClose={handleNewMarketClose}
+                onCreate={handleMarketCreate}
+            />
         </>
     );
 };

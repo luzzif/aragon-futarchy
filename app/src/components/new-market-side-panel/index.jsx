@@ -7,8 +7,8 @@ import { Box, Flex } from "reflexbox";
 import { useTheme } from "@aragon/ui/dist/Theme";
 import { REALITIO_TIMEOUT } from "../../constants";
 import { useAragonApi } from "@aragon/api-react";
-import BigNumber from "bignumber.js";
 import Info from "@aragon/ui/dist/Info";
+import Link from "@aragon/ui/dist/Link";
 
 const Margin = styled.div`
     height: 16px;
@@ -173,19 +173,12 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
             <Info>
                 Once the market reaches its end time, people will be able to
                 post answers on Reality.eth. To correct a wrong answer, people
-                will have a maximum of {realitioTimeout} seconds (equivalent to{" "}
-                {new BigNumber(realitioTimeout)
-                    .dividedBy(60)
-                    .dividedBy(60)
-                    .decimalPlaces(2)
-                    .toString()}{" "}
-                hours or{" "}
-                {new BigNumber(realitioTimeout)
-                    .dividedBy(60)
-                    .dividedBy(24)
-                    .decimalPlaces(2)
-                    .toString()}{" "}
-                days).
+                will have a maximum of {realitioTimeout} seconds to mark the
+                correct one as such by including a sufficient bond. Read more
+                about the process on{" "}
+                <Link href="https://reality.eth.link/app/docs/html/dapp.html#answering-a-question">
+                    the Reality.eth documentation
+                </Link>
             </Info>
             <Margin />
             <Button

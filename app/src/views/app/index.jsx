@@ -7,6 +7,7 @@ import { Markets } from "../markets";
 import { Market } from "../market";
 import { ThemeProvider } from "styled-components";
 import { useTheme } from "@aragon/ui/dist/Theme";
+import { Redirect } from "react-router-dom/cjs/react-router-dom.min";
 
 export const App = () => {
     const {
@@ -20,12 +21,13 @@ export const App = () => {
             <ThemeProvider theme={theme}>
                 {syncing && <SyncIndicator />}
                 <Switch>
-                    <Route path="/market/:conditionId">
+                    <Route path="/markets/:conditionId">
                         <Market />
                     </Route>
-                    <Route path="/">
+                    <Route path="/markets">
                         <Markets />
                     </Route>
+                    <Redirect to="/markets" />
                 </Switch>
             </ThemeProvider>
         </Main>

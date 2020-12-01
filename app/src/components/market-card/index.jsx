@@ -1,102 +1,123 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback } from "react";
 import { Flex, Box } from "reflexbox";
-import AuiBox from "@aragon/ui/dist/Box";
-import styled, { css } from "styled-components";
-import IdentityBadge from "@aragon/ui/dist/IdentityBadge";
 import { textStyle } from "@aragon/ui/dist/text-styles";
-import BigNumber from "bignumber.js";
 import { useTheme } from "@aragon/ui/dist/Theme";
 import Timer from "@aragon/ui/dist/Timer";
-import { Distribution } from "@aragon/ui";
-
-const PointerAuiBox = styled(AuiBox)`
-    cursor: pointer;
-    ${(props) =>
-        !props.open &&
-        css`
-            background: ${(props) => props.negativeColor};
-        `};
-`;
+import Card from "@aragon/ui/dist/Card";
+import { OutcomeBar } from "../outcome-bar";
+import { DateTime } from "luxon";
+import { IconClose } from "@aragon/ui";
+import IconWarning from "@aragon/ui/dist/IconWarning";
+import { OUTCOME_BAR_COLORS } from "../../constants";
 
 export const MarketCard = ({
-    creator,
     question,
     outcomes,
     endsAt,
     open,
-    redeemed,
+    conditionId,
+    onClick,
 }) => {
     const theme = useTheme();
-    const [pending, setPending] = useState();
 
-    useEffect(() => {
-        setPending(open && !redeemed && new Date().getTime() < endsAt * 1000);
-    }, [endsAt, open, redeemed]);
+    const handleLocalClick = useCallback(() => {
+        onClick(conditionId);
+    }, [conditionId, onClick]);
+
+    const getStatusAndIcon = () => {
+        let icon;
+        let text;
+        let color;
+        if (open) {
+            if (DateTime.utc().toSeconds() < endsAt) {
+                return <Timer end={endsAt} maxUnits={4} />;
+            } else {
+                // expired, awaiting finalization
+                icon = (
+                    <IconWarning
+                        css={`
+                            display: flex;
+                        `}
+                    />
+                );
+                text = "Awaiting finalization";
+                color = theme.warning;
+            }
+        } else {
+            icon = (
+                <IconClose
+                    css={`
+                        display: flex;
+                    `}
+                />
+            );
+            text = "Closed";
+            color = theme.negative;
+        }
+        return (
+            <Flex
+                css={`
+                    color: ${color};
+                    ${textStyle("body2")}
+                `}
+                alignItems="center"
+            >
+                <Box size="small">{icon}</Box>
+                <Box>{text}</Box>
+            </Flex>
+        );
+    };
 
     return (
-        <PointerAuiBox
+        <Card
             open={open}
             negativeColor={theme.negativeSurface}
-            padding={16}
+            onClick={handleLocalClick}
+            height={252}
         >
             <Flex
                 width="100%"
                 height="100%"
                 overflow="hidden"
                 flexDirection="column"
+                padding="16px 20px"
             >
-                <Box mb="16px">
-                    <IdentityBadge entity={creator} badgeOnly shorten />
-                </Box>
-                <Box mb="16px">
-                    <Distribution
-                        heading={question}
-                        items={outcomes.map((outcome) => ({
-                            item: outcome.label,
-                            percentage: new BigNumber(outcome.price)
-                                .multipliedBy("100")
-                                .decimalPlaces(2)
-                                .toNumber(),
-                        }))}
-                    />
-                </Box>
-                <Flex
-                    flexDirection="column"
-                    height="100%"
-                    justifyContent="flex-end"
+                <Box
+                    mb="16px"
+                    lineHeight="27px"
+                    height="54px"
+                    minHeight="54px"
+                    css={`
+                        overflow: hidden;
+                        ${textStyle("body1")};
+                        display: -webkit-box;
+                        -webkit-box-orient: vertical;
+                        -webkit-line-clamp: 3;
+                    `}
                 >
-                    <Box maxHeight="24px">
-                        {pending && (
-                            <Timer
-                                end={
-                                    open && new Date().getTime() < endsAt * 1000
-                                        ? new Date(endsAt * 1000)
-                                        : new Date(0)
+                    {question}
+                </Box>
+                <Flex mb="16px" flexDirection="column">
+                    {outcomes.slice(0, 2).map((outcome, index) => (
+                        <Box mb="12px" key={outcome.positionId}>
+                            <OutcomeBar
+                                label={outcome.label}
+                                price={outcome.price}
+                                color={
+                                    OUTCOME_BAR_COLORS[
+                                        index % OUTCOME_BAR_COLORS.length
+                                    ]
                                 }
                             />
-                        )}
-                        {redeemed && (
-                            <span
-                                css={`
-                                    ${textStyle("body1")}
-                                    color: ${theme.negative};
-                                `}
-                            >
-                                Positions redeemed
-                            </span>
-                        )}
-                        {!open && !redeemed && (
-                            <span
-                                css={`
-                                    ${textStyle("body2")}
-                                `}
-                            >
-                                Closed
-                            </span>
-                        )}
+                        </Box>
+                    ))}
+                    <Box height="28px">
+                        {outcomes.length > 2 &&
+                            `(${outcomes.length - 2} more outcomes hidden...`}
                     </Box>
                 </Flex>
+                {getStatusAndIcon()}
             </Flex>
-        </PointerAuiBox>
+        </Card>
     );
 };
