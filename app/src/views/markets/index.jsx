@@ -19,7 +19,9 @@ export const Markets = () => {
 
     const [sidePanelOpen, setSidePanelOpen] = useState(false);
     const [dateFilter, setDateFilter] = useState({ start: null, end: null });
-    const [filteredMarkets, setFilteredMarkets] = useState(appState.markets);
+    const [filteredMarkets, setFilteredMarkets] = useState(
+        appState.markets || []
+    );
 
     useEffect(() => {
         if (dateFilter.start && dateFilter.end) {
@@ -33,7 +35,7 @@ export const Markets = () => {
                 )
             );
         } else {
-            setFilteredMarkets(appState.markets);
+            setFilteredMarkets(appState.markets || []);
         }
     }, [appState.markets, dateFilter]);
 
@@ -54,6 +56,13 @@ export const Markets = () => {
 
     const handleMarketCreate = useCallback(
         (question, outcomes, funding, endsAt) => {
+            console.log(
+                asciiToHex(question),
+                outcomes.map(asciiToHex),
+                DateTime.fromISO(endsAt).toSeconds(),
+                encodeQuestion(question, outcomes, "Futarchy"),
+                REALITIO_TIMEOUT[network.id]
+            );
             api.createMarket(
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
@@ -102,12 +111,11 @@ export const Markets = () => {
             </Bar>
             {filteredMarkets.length > 0 ? (
                 <Flex flexDirection="column">
-                    <Flex flexWrap="wrap" m="-16px">
+                    <Flex width="100%" flexWrap="wrap">
                         {filteredMarkets.map((market) => (
                             <Box
-                                m="16px"
-                                height={200}
-                                maxHeight={200}
+                                p="16px"
+                                width={["100%", "50%", "50%", "25%"]}
                                 key={market.conditionId}
                             >
                                 <MarketCard

@@ -1,11 +1,10 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Flex, Box } from "reflexbox";
 import { textStyle } from "@aragon/ui/dist/text-styles";
 import { useTheme } from "@aragon/ui/dist/Theme";
 import Timer from "@aragon/ui/dist/Timer";
 import Card from "@aragon/ui/dist/Card";
 import { OutcomeBar } from "../outcome-bar";
-import { DateTime } from "luxon";
 import { IconClose } from "@aragon/ui";
 import IconWarning from "@aragon/ui/dist/IconWarning";
 import { OUTCOME_BAR_COLORS } from "../../constants";
@@ -19,6 +18,24 @@ export const MarketCard = ({
     onClick,
 }) => {
     const theme = useTheme();
+    const [expired, setExpired] = useState(false);
+
+    useEffect(() => {
+        const now = Date.now();
+        const expired = endsAt < parseInt(now / 1000);
+        setExpired(expired);
+        if (!expired) {
+            // if the market is not expired we set up a timeout to update
+            // the component's state once it actually expires.
+            const timer = setTimeout(
+                () => setExpired(true),
+                endsAt * 1000 - now
+            );
+            return () => {
+                clearTimeout(timer);
+            };
+        }
+    }, [endsAt]);
 
     const handleLocalClick = useCallback(() => {
         onClick(conditionId);
@@ -29,8 +46,8 @@ export const MarketCard = ({
         let text;
         let color;
         if (open) {
-            if (DateTime.utc().toSeconds() < endsAt) {
-                return <Timer end={endsAt} maxUnits={4} />;
+            if (!expired) {
+                return <Timer end={new Date(endsAt * 1000)} maxUnits={4} />;
             } else {
                 // expired, awaiting finalization
                 icon = (
@@ -74,6 +91,7 @@ export const MarketCard = ({
             negativeColor={theme.negativeSurface}
             onClick={handleLocalClick}
             height={252}
+            width="100%"
         >
             <Flex
                 width="100%"
@@ -111,9 +129,9 @@ export const MarketCard = ({
                             />
                         </Box>
                     ))}
-                    <Box height="28px">
+                    <Box height="28px" mt="8px">
                         {outcomes.length > 2 &&
-                            `(${outcomes.length - 2} more outcomes hidden...`}
+                            `${outcomes.length - 2} more outcomes not shown`}
                     </Box>
                 </Flex>
                 {getStatusAndIcon()}

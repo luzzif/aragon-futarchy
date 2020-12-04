@@ -37,7 +37,20 @@ export const Market = ({
     const [redeemable, setRedeemable] = useState(false);
 
     useEffect(() => {
-        setExpired(endsAt < parseInt(Date.now() / 1000));
+        const now = Date.now();
+        const expired = endsAt < parseInt(now / 1000);
+        setExpired(expired);
+        if (!expired) {
+            // if the market is not expired we set up a timeout to update
+            // the component's state once it actually expires.
+            const timer = setTimeout(
+                () => setExpired(true),
+                endsAt * 1000 - now
+            );
+            return () => {
+                clearTimeout(timer);
+            };
+        }
     }, [endsAt]);
 
     useEffect(() => {
