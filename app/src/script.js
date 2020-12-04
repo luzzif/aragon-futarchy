@@ -86,7 +86,6 @@ const getUpdatedOutcomesInformation = async (
 
 const handleCreateMarket = async (event, selectedAccount) => {
     try {
-        console.log(event);
         const { returnValues } = event;
         const {
             creator,
@@ -166,7 +165,6 @@ const handleTrade = async (event, markets, selectedAccount) => {
 };
 
 app.store(async (state, action) => {
-    console.log(action);
     const { event } = action;
     switch (event) {
         case events.SYNC_STATUS_SYNCING: {
