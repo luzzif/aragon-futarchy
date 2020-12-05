@@ -56,13 +56,6 @@ export const Markets = () => {
 
     const handleMarketCreate = useCallback(
         (question, outcomes, funding, endsAt) => {
-            console.log(
-                asciiToHex(question),
-                outcomes.map(asciiToHex),
-                DateTime.fromISO(endsAt).toSeconds(),
-                encodeQuestion(question, outcomes, "Futarchy"),
-                REALITIO_TIMEOUT[network.id]
-            );
             api.createMarket(
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
