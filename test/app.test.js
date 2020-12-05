@@ -15,7 +15,7 @@ const { getWeth9Balance } = require("./helpers/balances.js");
 const FutarchyApp = artifacts.require("FutarchyApp.sol");
 
 // eslint-disable-next-line no-undef
-contract("FutarchyApp", ([appManager, user]) => {
+contract("FutarchyApp", ([appManager, user1]) => {
     const arbitrationPrice = toWei("0.1");
     let appBase,
         app,
@@ -109,7 +109,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     it("should guarantee a market creation to anyone", async () => {
         await newMarket(
             app,
-            user,
+            user1,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
@@ -121,7 +121,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     it("should let a user perform a buy", async () => {
         const { conditionId, marketMakerInstance } = await newMarket(
             app,
-            user,
+            user1,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
@@ -135,7 +135,7 @@ contract("FutarchyApp", ([appManager, user]) => {
             outcomeTokensAmount
         );
         await app.buy(conditionId, outcomeTokensAmount, totalCost, {
-            from: user,
+            from: user1,
             value: totalCost,
         });
         const positionId = await getPositionId(
@@ -144,7 +144,7 @@ contract("FutarchyApp", ([appManager, user]) => {
             conditionId
         );
         const rawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
-            user,
+            user1,
             positionId
         );
         assert.equal(rawOutcomeTokenAmount.toString(), wantedShares);
@@ -153,7 +153,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     it("should let a user perform a sell", async () => {
         const { conditionId, marketMakerInstance } = await newMarket(
             app,
-            user,
+            user1,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
@@ -168,7 +168,7 @@ contract("FutarchyApp", ([appManager, user]) => {
         );
         // buying the tokens that will be sold later
         await app.buy(conditionId, outcomeTokensAmount, totalCost.toString(), {
-            from: user,
+            from: user1,
             value: totalCost.toString(),
         });
         const positionId = await getPositionId(
@@ -177,22 +177,22 @@ contract("FutarchyApp", ([appManager, user]) => {
             conditionId
         );
         const preSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
-            user,
+            user1,
             positionId
         );
         assert.equal(preSellRawOutcomeTokenAmount.toString(), wantedShares);
         await conditionalTokensInstance.setApprovalForAll(app.address, true, {
-            from: user,
+            from: user1,
         });
         const sellReceipt = await app.sell(conditionId, outcomeTokensAmount, {
-            from: user,
+            from: user1,
         });
         const postSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
-            user,
+            user1,
             positionId
         );
         assert.equal(postSellRawOutcomeTokenAmount.toString(), "0");
-        const weth9Balance = await getWeth9Balance(app, user);
+        const weth9Balance = await getWeth9Balance(app, user1);
         assert.equal(
             weth9Balance.toString(),
             getEventArgument(sellReceipt, "Trade", "netCollateralCost")
@@ -204,7 +204,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     it("shouldn't let a user sell more than what they have", async () => {
         const { conditionId, marketMakerInstance } = await newMarket(
             app,
-            user,
+            user1,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000) + 1000,
@@ -219,7 +219,7 @@ contract("FutarchyApp", ([appManager, user]) => {
         );
         // buying the tokens that will be sold later
         await app.buy(conditionId, outcomeTokensAmount, totalCost.toString(), {
-            from: user,
+            from: user1,
             value: totalCost.toString(),
         });
         const positionId = await getPositionId(
@@ -229,10 +229,10 @@ contract("FutarchyApp", ([appManager, user]) => {
         );
         assert.equal(
             wantedShares,
-            await conditionalTokensInstance.balanceOf(user, positionId)
+            await conditionalTokensInstance.balanceOf(user1, positionId)
         );
         assertRevert(
-            app.sell(conditionId, [toWei("2"), "0"], { from: user }),
+            app.sell(conditionId, [toWei("2"), "0"], { from: user1 }),
             "INSUFFICIENT_BALANCE"
         );
     });
@@ -240,7 +240,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     it("should let a user close a market", async function () {
         let { conditionId, realitioQuestionId } = await newMarket(
             app,
-            user,
+            user1,
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
             parseInt(Date.now() / 1000),
@@ -253,7 +253,7 @@ contract("FutarchyApp", ([appManager, user]) => {
         await new Promise((resolve) => {
             setTimeout(resolve, 3000);
         });
-        const receipt = await app.closeMarket(conditionId, { from: user });
+        const receipt = await app.closeMarket(conditionId, { from: user1 });
         const closeMarketEvent = receipt.logs.find(
             (log) => log.event === "CloseMarket"
         );
@@ -262,5 +262,36 @@ contract("FutarchyApp", ([appManager, user]) => {
         expect(args.payouts).to.have.length(2);
         expect(args.payouts[0].toString()).to.be.equal("1");
         expect(args.payouts[1].toString()).to.be.equal("0");
+    });
+
+    it("should handle a reality.eth answer that marks the question as invalid", async function () {
+        let { conditionId, realitioQuestionId } = await newMarket(
+            app,
+            user1,
+            "test-question",
+            ["test-outcome-1", "test-outcome-2"],
+            parseInt(Date.now() / 1000),
+            "1",
+            2
+        );
+        // marking the question as invalid
+        await realitioInstance.submitAnswer(
+            realitioQuestionId,
+            "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            0,
+            { value: toWei("1") }
+        );
+        await new Promise((resolve) => {
+            setTimeout(resolve, 3000);
+        });
+        const receipt = await app.closeMarket(conditionId, { from: user1 });
+        const closeMarketEvent = receipt.logs.find(
+            (log) => log.event === "CloseMarket"
+        );
+        const { args } = closeMarketEvent;
+        expect(args.conditionId).to.be.equal(conditionId);
+        expect(args.payouts).to.have.length(2);
+        expect(args.payouts[0].toString()).to.be.equal("1");
+        expect(args.payouts[1].toString()).to.be.equal("1");
     });
 });

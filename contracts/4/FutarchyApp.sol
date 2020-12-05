@@ -203,9 +203,14 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         bytes32 _realitioQuestionId = _marketData.realitioQuestionId;
         require(realitio.isFinalized(_realitioQuestionId), "NOT_FINALIZED");
         uint _rightOutcomeIndex = uint(realitio.resultFor(_realitioQuestionId));
+        bool _invalidQuestion = _rightOutcomeIndex > _marketData.outcomesAmount;
         uint[] memory _payouts = new uint[](_marketData.outcomesAmount);
         for (uint _i = 0; _i < _marketData.outcomesAmount; _i++) {
-            _payouts[_i] = _i == _rightOutcomeIndex ? 1 : 0;
+            if(_invalidQuestion) {
+                _payouts[_i] = 1;
+            } else {
+                _payouts[_i] = _i == _rightOutcomeIndex ? 1 : 0;
+            }
         }
         _marketData.marketMaker.close();
         conditionalTokens.reportPayouts(_marketData.questionId, _payouts);
