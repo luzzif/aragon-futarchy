@@ -15,6 +15,7 @@ import { StatusCard } from "./status-card";
 import { TradingCard } from "./trading-card";
 import { abi as realitioAbi } from "@realitio/realitio-contracts/truffle/build/contracts/Realitio.json";
 import Link from "@aragon/ui/dist/Link";
+import { BalancesCard } from "./balances-card";
 
 export const Market = ({
     onBack,
@@ -163,15 +164,17 @@ export const Market = ({
                                             tradeable={tradeable}
                                         />
                                     </Box>
-                                    {tradeable && (
-                                        <Box mb="20px">
+                                    <Box mb="20px">
+                                        {tradeable ? (
                                             <TradingCard
                                                 tradeable={tradeable}
                                                 outcomes={outcomes}
                                                 conditionId={conditionId}
                                             />
-                                        </Box>
-                                    )}
+                                        ) : (
+                                            <BalancesCard outcomes={outcomes} />
+                                        )}
+                                    </Box>
                                     <Box mb="20px">
                                         <AuiBox width="100%" heading="Actions">
                                             {getActionContent()}
