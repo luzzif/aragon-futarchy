@@ -7,11 +7,13 @@ import { NewMarketSidePanel } from "../../components/new-market-side-panel";
 import { Box, Flex } from "reflexbox";
 import { MarketCard } from "../../components/market-card";
 import { encodeQuestion } from "../../utils/realitio";
-import { REALITIO_TIMEOUT } from "../../constants";
+import { MARKET_STATUSES, REALITIO_TIMEOUT } from "../../constants";
 import { GU } from "@aragon/ui/dist/constants";
 import { useHistory } from "react-router-dom";
 import Bar from "@aragon/ui/dist/Bar";
 import DateRangePicker from "@aragon/ui/dist/DateRangePicker";
+import DropDown from "@aragon/ui/dist/DropDown";
+import { getMarketStatus } from "../../utils/markets";
 
 export const Markets = () => {
     const history = useHistory();
@@ -19,25 +21,32 @@ export const Markets = () => {
 
     const [sidePanelOpen, setSidePanelOpen] = useState(false);
     const [dateFilter, setDateFilter] = useState({ start: null, end: null });
+    const [statusFilter, setStatusFilter] = useState(0);
     const [filteredMarkets, setFilteredMarkets] = useState(
         appState.markets || []
     );
 
     useEffect(() => {
+        let newFilteredMarkets = appState.markets || [];
         if (dateFilter.start && dateFilter.end) {
             const parsedFrom = dateFilter.start.getTime() / 1000;
             const parsedTo = dateFilter.end.getTime() / 1000;
-            setFilteredMarkets(
-                appState.markets.filter(
-                    (market) =>
-                        parsedFrom >= market.timestamp &&
-                        market.timestamp <= parsedTo
-                )
+            newFilteredMarkets = newFilteredMarkets.filter(
+                (market) =>
+                    parsedFrom >= market.timestamp &&
+                    market.timestamp <= parsedTo
             );
-        } else {
-            setFilteredMarkets(appState.markets || []);
         }
-    }, [appState.markets, dateFilter]);
+        if (statusFilter && statusFilter > 0) {
+            const wantedStatus = Object.values(MARKET_STATUSES)[
+                statusFilter - 1
+            ];
+            newFilteredMarkets = newFilteredMarkets.filter(
+                (market) => getMarketStatus(market) === wantedStatus
+            );
+        }
+        setFilteredMarkets(newFilteredMarkets);
+    }, [appState.markets, dateFilter, statusFilter]);
 
     const handleNewMarketOpen = useCallback(() => {
         setSidePanelOpen(true);
@@ -99,6 +108,14 @@ export const Markets = () => {
                         endDate={dateFilter.end}
                         onChange={setDateFilter}
                         format="YYYY/MM/DD"
+                    />
+                    <DropDown
+                        header="Status"
+                        placeholder="Status"
+                        selected={statusFilter}
+                        onChange={setStatusFilter}
+                        items={["All", ...Object.values(MARKET_STATUSES)]}
+                        width="128px"
                     />
                 </div>
             </Bar>

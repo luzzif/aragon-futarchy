@@ -14,3 +14,9 @@ export const OUTCOME_BAR_COLORS = [
     "#7C80F2",
     "#9BC75A",
 ];
+
+export const MARKET_STATUSES = Object.freeze({
+    OPEN: "Open",
+    CLOSED: "Closed",
+    AWAITING_FINALIZATION: "Awaiting finalization",
+});
