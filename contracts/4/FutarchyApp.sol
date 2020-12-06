@@ -44,7 +44,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     ILMSRMarketMakerFactory public lmsrMarketMakerFactory;
     IWETH9 public weth9Token;
     Realitio public realitio;
-    address public klerosArbitratorAddress;
+    address public arbitratorAddress;
     mapping(bytes32 => MarketData) public marketData;
 
     function initialize(
@@ -52,13 +52,13 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         address _marketMakerFactoryAddress,
         address _weth9TokenAddress,
         address _realitioAddress,
-        address _klerosArbitratorAddress
+        address _arbitratorAddress
     ) public onlyInit {
         conditionalTokens = IConditionalTokens(_conditionalTokensAddress);
         lmsrMarketMakerFactory = ILMSRMarketMakerFactory(_marketMakerFactoryAddress);
         weth9Token = IWETH9(_weth9TokenAddress);
         realitio = Realitio(_realitioAddress);
-        klerosArbitratorAddress = _klerosArbitratorAddress;
+        arbitratorAddress = _arbitratorAddress;
         initialized();
     }
 
@@ -94,11 +94,10 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             msg.value
         );
         conditionalTokens.setApprovalForAll(address(_marketMaker), true);
-        // FIXME: use proper values here
         bytes32 _realitioQuestionId = realitio.askQuestion(
             2,
             _realitioQuestion,
-            klerosArbitratorAddress,
+            arbitratorAddress,
             _realitioTimeout,
             _endsAt,
             0
