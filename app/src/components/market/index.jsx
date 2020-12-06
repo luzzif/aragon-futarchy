@@ -32,7 +32,7 @@ export const Market = ({
     const { api } = useAragonApi();
 
     const [tradeable, setTradeable] = useState(null);
-    const [finalized, setFinalized] = useState(false);
+    const [finalized, setFinalized] = useState(null);
     const [expired, setExpired] = useState(false);
     const [redeemable, setRedeemable] = useState(false);
 
@@ -101,6 +101,36 @@ export const Market = ({
         }
     }, [api, conditionId, outcomes]);
 
+    const getActionContent = () => {
+        if (finalized === false && expired) {
+            return (
+                <Link
+                    href={`https://reality.eth.link/app/#!/question/${realitioQuestionId}`}
+                    css={`
+                        text-decoration: none;
+                        outline: none;
+                    `}
+                >
+                    <Button mode="positive">Finalize on Reality.eth</Button>
+                </Link>
+            );
+        } else if (finalized && open) {
+            return (
+                <Button mode="negative" onClick={onClose}>
+                    Close market
+                </Button>
+            );
+        } else if (redeemable) {
+            return (
+                <Button mode="positive" onClick={handleRedeemPositions}>
+                    Redeem positions
+                </Button>
+            );
+        } else {
+            return "No actions to perform";
+        }
+    };
+
     return (
         <>
             <Header primary="Futarchy" />
@@ -144,41 +174,7 @@ export const Market = ({
                                     )}
                                     <Box mb="20px">
                                         <AuiBox width="100%" heading="Actions">
-                                            {!finalized && expired && (
-                                                <Link
-                                                    href={`https://reality.eth.link/app/#!/question/${realitioQuestionId}`}
-                                                    css={`
-                                                        text-decoration: none;
-                                                        outline: none;
-                                                    `}
-                                                >
-                                                    <Button mode="positive">
-                                                        Finalize on Reality.eth
-                                                    </Button>
-                                                </Link>
-                                            )}
-                                            {finalized && open && (
-                                                <Button
-                                                    mode="negative"
-                                                    onClick={onClose}
-                                                >
-                                                    Close market
-                                                </Button>
-                                            )}
-                                            {redeemable && (
-                                                <Button
-                                                    mode="positive"
-                                                    onClick={
-                                                        handleRedeemPositions
-                                                    }
-                                                >
-                                                    Redeem positions
-                                                </Button>
-                                            )}
-                                            {!redeemable &&
-                                                !finalized &&
-                                                !expired &&
-                                                "No actions to perform"}
+                                            {getActionContent()}
                                         </AuiBox>
                                     </Box>
                                 </Flex>
