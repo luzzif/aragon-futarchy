@@ -26,7 +26,6 @@ export const Market = ({
     conditionId,
     outcomes,
     endsAt,
-    redeemed,
     open,
     onClose,
 }) => {
@@ -75,12 +74,11 @@ export const Market = ({
     useEffect(() => {
         setRedeemable(
             !open &&
-                !redeemed &&
                 outcomes.find((outcome) =>
                     new BigNumber(outcome.balance).isGreaterThan("0")
                 )
         );
-    }, [endsAt, open, outcomes, redeemed]);
+    }, [endsAt, open, outcomes]);
 
     const handleRedeemPositions = useCallback(async () => {
         const conditionalTokensInstance = api.external(
