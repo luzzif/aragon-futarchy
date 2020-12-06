@@ -2,7 +2,7 @@
 // enforced in the network
 export const REALITIO_TIMEOUT = Object.freeze({
     1: 86400,
-    4: 300,
+    4: 60,
     1337: 60,
 });
 
