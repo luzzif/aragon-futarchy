@@ -28,7 +28,7 @@ const PercentageBox = styled(Box)`
     color: ${({ theme }) => theme.surfaceContentSecondary};
 `;
 
-export const OutcomeBar = ({ label, price, color }) => {
+export const OutcomeBar = ({ label, price, balance, color }) => {
     const percentage = new BigNumber(price)
         .multipliedBy(100)
         .decimalPlaces(2)
@@ -41,7 +41,13 @@ export const OutcomeBar = ({ label, price, color }) => {
             justifyContent="space-between"
         >
             <Flex justifyContent="space-between" mb="4px">
-                <LabelBox>{label}</LabelBox>
+                <LabelBox>
+                    {label}{" "}
+                    {balance &&
+                        ` (${new BigNumber(balance)
+                            .decimalPlaces(3)
+                            .toString()} shares)`}
+                </LabelBox>
                 <PercentageBox>{percentage}%</PercentageBox>
             </Flex>
             <Box flex="1">

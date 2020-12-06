@@ -53,6 +53,7 @@ export const InfoCard = ({
                                 <OutcomeBar
                                     label={outcome.label}
                                     price={outcome.price}
+                                    balance={outcome.balance}
                                     color={
                                         OUTCOME_BAR_COLORS[
                                             index % OUTCOME_BAR_COLORS.length

@@ -162,7 +162,7 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     onChange={handleFundingChange}
                 />
             </Field>
-            <Field label="Ends at">
+            <Field label="Closing time">
                 <TextInput
                     type="datetime-local"
                     wide
