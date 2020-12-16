@@ -28,7 +28,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         bytes32 conditionId,
         bytes32[] outcomes
     );
-    event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp);
+    event CloseMarket(bytes32 conditionId, uint[] marginalPricesAtClosure, uint[] payouts, uint timestamp);
 
     struct MarketData {
         ILMSRMarketMaker marketMaker;
@@ -204,7 +204,9 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         uint _rightOutcomeIndex = uint(realitio.resultFor(_realitioQuestionId));
         bool _invalidQuestion = _rightOutcomeIndex > _marketData.outcomesAmount;
         uint[] memory _payouts = new uint[](_marketData.outcomesAmount);
+        uint[] memory _marginalPricesAtClosure = new uint[](_marketData.outcomesAmount);
         for (uint _i = 0; _i < _marketData.outcomesAmount; _i++) {
+            _marginalPricesAtClosure[_i] = _marketData.marketMaker.calcMarginalPrice(uint8(_i));
             if(_invalidQuestion) {
                 _payouts[_i] = 1;
             } else {
@@ -213,7 +215,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         }
         _marketData.marketMaker.close();
         conditionalTokens.reportPayouts(_marketData.questionId, _payouts);
-        emit CloseMarket(_conditionId, _payouts, getTimestamp64());
+        emit CloseMarket(_conditionId, _marginalPricesAtClosure, _payouts, getTimestamp64());
     }
 
     /// Modifiers

@@ -29,7 +29,8 @@ const getUpdatedOutcomesInformation = async (
     selectedAccount,
     conditionId,
     outcomeLabels,
-    payouts
+    payouts,
+    marginalPricesAtClosure
 ) => {
     try {
         const outcomes = [];
@@ -59,9 +60,9 @@ const getUpdatedOutcomesInformation = async (
                     .balanceOf(selectedAccount, positionId)
                     .toPromise();
             }
-            const price = await marketMakerInstance
-                .calcMarginalPrice(i)
-                .toPromise();
+            const price = marginalPricesAtClosure
+                ? marginalPricesAtClosure[i]
+                : await marketMakerInstance.calcMarginalPrice(i).toPromise();
             outcomes.push({
                 label: outcomeLabels[i],
                 positionId,
@@ -116,7 +117,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
 const handleCloseMarket = async (event, markets, selectedAccount) => {
     try {
         const { returnValues } = event;
-        const { conditionId, payouts } = returnValues;
+        const { conditionId, payouts, marginalPricesAtClosure } = returnValues;
         const marketIndex = markets.findIndex(
             (market) => market.conditionId === conditionId
         );
@@ -127,7 +128,8 @@ const handleCloseMarket = async (event, markets, selectedAccount) => {
                 selectedAccount,
                 conditionId,
                 markets[marketIndex].outcomes.map((outcome) => outcome.label),
-                payouts
+                payouts,
+                marginalPricesAtClosure
             );
         }
         return [...markets];
