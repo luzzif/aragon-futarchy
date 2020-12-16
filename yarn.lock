@@ -1029,6 +1029,11 @@
     ethers "^4.0.0-beta.1"
     source-map-support "^0.5.19"
 
+"@openzeppelin/contracts@^3.3.0":
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.3.0.tgz#ffdb693c5c349fc33bba420248dd3ac0a2d7c408"
+  integrity sha512-AemZEsQYtUp1WRkcmZm1div5ORfTpLquLaziCIrSagjxyKdmObxuaY1yjQ5SHFMctR8rLwp706NXTbiIRJg7pw==
+
 "@realitio/realitio-contracts@^2.2.3":
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/@realitio/realitio-contracts/-/realitio-contracts-2.2.3.tgz#419860b374df2ec990db88cab14b7db82a6954cc"

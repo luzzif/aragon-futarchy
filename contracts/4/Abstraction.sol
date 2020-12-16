@@ -42,11 +42,6 @@ interface IERC20 {
     function balanceOf(address) external returns(uint);
 }
 
-contract IWETH9 is IERC20 {
-    function deposit() external payable;
-    function withdraw(uint wad) public;
-}
-
 interface ILMSRMarketMakerFactory {
     function createLMSRMarketMaker(
         IConditionalTokens pmSystem,

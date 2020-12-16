@@ -1,0 +1,54 @@
+[
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_listId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTokens",
+        "outputs": [
+            {
+                "internalType": "address[]",
+                "name": "",
+                "type": "address[]"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "_tokens",
+                "type": "address[]"
+            }
+        ],
+        "name": "getTokensData",
+        "outputs": [
+            {
+                "internalType": "string[]",
+                "name": "names",
+                "type": "string[]"
+            },
+            {
+                "internalType": "string[]",
+                "name": "symbols",
+                "type": "string[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "decimals",
+                "type": "uint256[]"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    }
+]

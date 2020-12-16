@@ -85,7 +85,9 @@ export const Market = ({
             await api.call("conditionalTokens").toPromise(),
             conditionalTokensAbi
         );
-        const collateralTokenAddress = await api.call("weth9Token").toPromise();
+        const collateralTokenAddress = await api
+            .call("collateralToken")
+            .toPromise();
         try {
             await conditionalTokensInstance
                 .redeemPositions(

@@ -7,7 +7,7 @@ import { NewMarketSidePanel } from "../../components/new-market-side-panel";
 import { Box, Flex } from "reflexbox";
 import { MarketCard } from "../../components/market-card";
 import { encodeQuestion } from "../../utils/realitio";
-import { MARKET_STATUSES, REALITIO_TIMEOUT } from "../../constants";
+import { MARKET_STATUSES } from "../../constants";
 import { GU } from "@aragon/ui/dist/constants";
 import { useHistory } from "react-router-dom";
 import Bar from "@aragon/ui/dist/Bar";
@@ -17,7 +17,7 @@ import { getMarketStatus } from "../../utils/markets";
 
 export const Markets = () => {
     const history = useHistory();
-    const { appState, api, connectedAccount, network } = useAragonApi();
+    const { appState, api, connectedAccount } = useAragonApi();
 
     const [sidePanelOpen, setSidePanelOpen] = useState(false);
     const [dateFilter, setDateFilter] = useState({ start: null, end: null });
@@ -64,20 +64,20 @@ export const Markets = () => {
     );
 
     const handleMarketCreate = useCallback(
-        (question, outcomes, funding, endsAt) => {
+        (collateralTokenAddress, question, outcomes, funding, endsAt) => {
             api.createMarket(
+                collateralTokenAddress,
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
                 DateTime.fromISO(endsAt).toSeconds(),
                 encodeQuestion(question, outcomes, "Futarchy"),
-                REALITIO_TIMEOUT[network.id],
                 {
                     from: connectedAccount,
                     value: toWei(funding.toString()),
                 }
             ).subscribe(() => {}, console.error);
         },
-        [api, connectedAccount, network]
+        [api, connectedAccount]
     );
 
     return (

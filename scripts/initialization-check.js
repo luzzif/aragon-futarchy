@@ -46,7 +46,7 @@ const contract = new web3Instance.eth.Contract(appAbi, address);
 Promise.all([
     contract.methods.getInitializationBlock().call(),
     contract.methods.hasInitialized().call(),
-    contract.methods.weth9Token().call(),
+    contract.methods.collateralToken().call(),
     contract.methods.lmsrMarketMakerFactory().call(),
     contract.methods.conditionalTokens().call(),
 ]).then(

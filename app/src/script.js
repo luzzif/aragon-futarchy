@@ -33,7 +33,9 @@ const getUpdatedOutcomesInformation = async (
 ) => {
     try {
         const outcomes = [];
-        const collateralTokenAddress = await app.call("weth9Token").toPromise();
+        const collateralTokenAddress = await app
+            .call("collateralToken")
+            .toPromise();
         const conditionalTokensInstance = app.external(
             await app.call("conditionalTokens").toPromise(),
             conditionalTokensAbi
@@ -86,6 +88,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
             conditionId,
             outcomes: outcomeLabels,
             timestamp,
+            collateralToken,
         } = returnValues;
         const {
             endsAt,
@@ -107,6 +110,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
             open: true,
             questionId,
             realitioQuestionId,
+            collateralToken,
         };
     } catch (error) {
         console.error("error handling create market event", error);

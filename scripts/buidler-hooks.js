@@ -6,14 +6,12 @@ module.exports = {
         const arbitrationPrice = toWei("0.1");
         let conditionalTokensAddress;
         let lsmrMarketMakerFactoryAddress;
-        let weth9Address;
         let realitioAddress;
         let realitioArbitratorProxyAddress;
         // Check if running on local network or not
         if (chainId == 1337) {
             log("deploying contracts in local network");
             const [appManager] = await web3.eth.getAccounts();
-
             const ConditionalTokens = artifacts.require(
                 "ConditionalTokens.sol"
             );
@@ -21,7 +19,6 @@ module.exports = {
             const LMSRMarketMakerFactory = artifacts.require(
                 "LMSRMarketMakerFactory.sol"
             );
-            const WETH9 = artifacts.require("WETH9.sol");
             const Realitio = artifacts.require("Realitio.sol");
             const CentralizedArbitrator = artifacts.require(
                 "CentralizedArbitrator.sol"
@@ -36,7 +33,6 @@ module.exports = {
             const conditionalTokensInstance = await ConditionalTokens.new({
                 from: appManager,
             });
-            const weth9Instance = await WETH9.new({ from: appManager });
             const realitioInstance = await Realitio.new({ from: appManager });
             const arbitratorInstance = await CentralizedArbitrator.new(
                 arbitrationPrice,
@@ -56,15 +52,43 @@ module.exports = {
             conditionalTokensAddress = conditionalTokensInstance.address;
             lsmrMarketMakerFactoryAddress =
                 lsmrMarketMakerFactoryInstance.address;
-            weth9Address = weth9Instance.address;
             realitioAddress = realitioInstance.address;
             realitioArbitratorProxyAddress =
                 realitioArbitratorProxyInstance.address;
+
+            const DXTokenRegistry = artifacts.require("DXTokenRegistry.sol");
+            const dxTokenRegistryInstance = await DXTokenRegistry.new({
+                from: appManager,
+            });
+            log(`DXToken address: ${dxTokenRegistryInstance.address}`);
+            await dxTokenRegistryInstance.addList("mocked list", {
+                from: appManager,
+            });
+            const ERC20PresetMinterPauser = await artifacts.require(
+                "ERC20PresetMinterPauser.sol"
+            );
+            const mockedToken1 = await ERC20PresetMinterPauser.new(
+                "Mocked 1",
+                "MCK1"
+            );
+            const mockedToken2 = await ERC20PresetMinterPauser.new(
+                "Mocked 2",
+                "MCK2"
+            );
+            await dxTokenRegistryInstance.addTokens(
+                1,
+                [mockedToken1.address, mockedToken2.address],
+                { from: appManager }
+            );
+            log(
+                `Added 2 mocked tokens at addresses ${mockedToken1.address} and ${mockedToken2.address}`
+            );
+            await mockedToken1.mint(appManager, toWei("100"));
+            await mockedToken2.mint(appManager, toWei("100"));
+            log("Mocked tokens minted");
         } else {
-            // TODO: set initialization addresses
             conditionalTokensAddress = 0;
             lsmrMarketMakerFactoryAddress = 0;
-            weth9Address = 0;
             realitioAddress = 0;
             realitioArbitratorProxyAddress = 0;
         }
@@ -72,16 +96,16 @@ module.exports = {
         log(
             `LSMR market maker factory address: ${lsmrMarketMakerFactoryAddress}`
         );
-        log(`WETH9 address: ${weth9Address}`);
         log(`Realitio address: ${realitioAddress}`);
+        log(`Realitio timeout: 60`);
         log(
             `Realitio arbitration proxy address: ${realitioArbitratorProxyAddress}`
         );
         return [
             conditionalTokensAddress,
             lsmrMarketMakerFactoryAddress,
-            weth9Address,
             realitioAddress,
+            60, // realitio seconds timeout
             realitioArbitratorProxyAddress,
         ];
     },

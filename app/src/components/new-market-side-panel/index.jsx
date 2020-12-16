@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { Field, Button, TextInput, IconRemove } from "@aragon/ui/dist";
 import SidePanel from "@aragon/ui/dist/SidePanel";
 import styled from "styled-components";
 import { DateTime } from "luxon";
 import { Box, Flex } from "reflexbox";
 import { useTheme } from "@aragon/ui/dist/Theme";
-import { REALITIO_TIMEOUT } from "../../constants";
-import { useAragonApi } from "@aragon/api-react";
 import Info from "@aragon/ui/dist/Info";
 import Link from "@aragon/ui/dist/Link";
+import { useCollateralTokens } from "../../hooks/collateral-tokens";
+import { useRealitioTimeout } from "../../hooks/realitio";
+import DropDown from "@aragon/ui/dist/DropDown";
 
 const Margin = styled.div`
     height: 16px;
@@ -21,20 +22,15 @@ const OutcomesContainer = styled(Flex)`
 
 export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     const theme = useTheme();
-    const { network } = useAragonApi();
+    const collateralTokens = useCollateralTokens();
+    const realitioTimeout = useRealitioTimeout();
 
+    const [collateralTokenIndex, setCollateralTokenIndex] = useState(0);
     const [question, setQuestion] = useState("");
     const [outcome, setOutcome] = useState("");
     const [outcomes, setOutcomes] = useState([]);
     const [endsAt, setEndsAt] = useState("");
     const [funding, setFunding] = useState("");
-    const [realitioTimeout, setRealitioTimeout] = useState("");
-
-    useEffect(() => {
-        if (network && !realitioTimeout) {
-            setRealitioTimeout(REALITIO_TIMEOUT[network.id]);
-        }
-    }, [network, realitioTimeout]);
 
     const handleQuestionChange = useCallback((event) => {
         setQuestion(event.target.value);
@@ -82,10 +78,25 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
     };
 
     const handleCreate = useCallback(() => {
-        onCreate(question, outcomes, funding, endsAt);
+        onCreate(
+            collateralTokens[collateralTokenIndex].address,
+            question,
+            outcomes,
+            funding,
+            endsAt
+        );
         onClose();
         resetState();
-    }, [onCreate, question, outcomes, funding, endsAt, onClose]);
+    }, [
+        collateralTokenIndex,
+        collateralTokens,
+        endsAt,
+        funding,
+        onClose,
+        onCreate,
+        outcomes,
+        question,
+    ]);
 
     const handleClose = useCallback(() => {
         onClose();
@@ -154,7 +165,19 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     )}
                 </OutcomesContainer>
             </Field>
-            <Field label="Initial ETH funding">
+            <Field label="Collateral token">
+                <DropDown
+                    wide
+                    header="Collateral token"
+                    placeholder="Collateral token"
+                    selected={collateralTokenIndex}
+                    onChange={setCollateralTokenIndex}
+                    items={collateralTokens.map(
+                        (collateral) => collateral.symbol
+                    )}
+                />
+            </Field>
+            <Field label="Collateral amount">
                 <TextInput
                     type="number"
                     wide
