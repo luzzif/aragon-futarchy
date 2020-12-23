@@ -156,7 +156,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     /**
       * @notice Sell outcome shares
       */
-    function sell(bytes32 _conditionId, uint[] _outcomeTokensAmount)
+    function sell(bytes32 _conditionId, uint[] _outcomeTokensAmount, uint _minimumCollateralBack)
             external
             payable
             auth(TRADE_ROLE)
@@ -166,22 +166,13 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
         require(_marketMaker.atomicOutcomeSlotCount() == _outcomeTokensAmount.length, "INCONSISTENT_OUTCOMES_LENGTH");
         uint[] memory _positionIds = getAllPositionIds(conditionalTokens, _conditionId, _marketMaker, weth9Token);
-
-        // check if the user has enough ct balance, and if they have, take ownership
-        // of the sold amount and actually sell it. Plus, outcome amounts are passed
-        // in as positive numbers by default, so in order to signal a selling operation
-        // to the market maker, we need to negate the passed amounts.
         int[] memory _intOutcomeTokenAmounts = new int[](_outcomeTokensAmount.length);
         for(uint _i; _i < _outcomeTokensAmount.length; _i++) {
             uint _outcomeTokenAmount = _outcomeTokensAmount[_i];
-            /* require(
-                conditionalTokens.balanceOf(msg.sender, _positionIds[_i]) >= _outcomeTokenAmount,
-                "NOT_ENOUGH_BALANCE"
-            ); */
             _intOutcomeTokenAmounts[_i] = -int(_outcomeTokenAmount);
         }
         conditionalTokens.safeBatchTransferFrom(msg.sender, address(this), _positionIds, _outcomeTokensAmount, "");
-        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokenAmounts, 0);
+        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokenAmounts, -int(_minimumCollateralBack));
         require(_netCollateralCost < 0, "INCONSISTENT_NET_COST");
         weth9Token.transfer(msg.sender, uint(-_netCollateralCost));
         emit Trade(
