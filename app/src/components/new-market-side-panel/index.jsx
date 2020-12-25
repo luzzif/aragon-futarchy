@@ -10,6 +10,7 @@ import Link from "@aragon/ui/dist/Link";
 import { useCollateralTokens } from "../../hooks/collateral-tokens";
 import { useRealitioTimeout } from "../../hooks/realitio";
 import DropDown from "@aragon/ui/dist/DropDown";
+import { TokenIcon } from "../token-icon";
 
 const Margin = styled.div`
     height: 16px;
@@ -172,9 +173,30 @@ export const NewMarketSidePanel = ({ open, onClose, onCreate }) => {
                     placeholder="Collateral token"
                     selected={collateralTokenIndex}
                     onChange={setCollateralTokenIndex}
-                    items={collateralTokens.map(
-                        (collateral) => collateral.symbol
-                    )}
+                    items={collateralTokens.map((collateral) => {
+                        const { symbol, logoURI } = collateral;
+                        return (
+                            <Flex alignItems="center">
+                                <Box mr="8px">
+                                    <TokenIcon logoUri={logoURI} />
+                                </Box>
+                                <Box>{symbol}</Box>
+                            </Flex>
+                        );
+                    })}
+                    renderLabel={({ selectedIndex }) => {
+                        const { symbol, logoURI } = collateralTokens[
+                            selectedIndex
+                        ];
+                        return (
+                            <Flex alignItems="center">
+                                <Box mr="8px">
+                                    <TokenIcon logoUri={logoURI} />
+                                </Box>
+                                <Box>{symbol}</Box>
+                            </Flex>
+                        );
+                    }}
                 />
             </Field>
             <Field label="Collateral amount">

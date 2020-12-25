@@ -1,16 +1,17 @@
 pragma solidity ^0.4.24;
 
 import "@realitio/realitio-contracts/truffle/contracts/Realitio.sol";
+import "@aragon/os/contracts/lib/token/ERC20.sol";
 
 interface IConditionalTokens {
     function prepareCondition(address oracle, bytes32 questionId, uint outcomesAmount) external;
     function getConditionId(address oracle, bytes32 questionId, uint outcomeSlotCount) external pure returns (bytes32);
     function getCollectionId(bytes32 parentCollectionId, bytes32 conditionId, uint indexSet) external view returns (bytes32);
-    function getPositionId(IERC20 collateralToken, bytes32 collectionId) external view returns (uint);
+    function getPositionId(ERC20 collateralToken, bytes32 collectionId) external view returns (uint);
     function balanceOf(address owner, uint positionId) external view returns (uint);
     function reportPayouts(bytes32 questionId, uint[] payouts) external;
     function setApprovalForAll(address operator, bool approved) external;
-    function redeemPositions(IERC20 collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint[] indexSets) external;
+    function redeemPositions(ERC20 collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint[] indexSets) external;
     function payoutNumerators(bytes32 conditionId, uint256 index) external view returns(uint256);
     function payoutDenominator(bytes32 conditionId) external view returns(uint256);
     function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes data) external;
@@ -36,16 +37,10 @@ interface ILMSRMarketMaker {
     function atomicOutcomeSlotCount() external view returns(uint);
 }
 
-interface IERC20 {
-    function transfer(address recipient, uint256 amount) external returns (bool);
-    function approve(address spender, uint256 amount) external returns (bool);
-    function balanceOf(address) external returns(uint);
-}
-
 interface ILMSRMarketMakerFactory {
     function createLMSRMarketMaker(
         IConditionalTokens pmSystem,
-        IERC20 collateralToken,
+        ERC20 collateralToken,
         bytes32[] conditionIds,
         uint64 fee,
         address whitelist,

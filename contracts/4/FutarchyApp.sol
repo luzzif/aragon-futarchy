@@ -2,12 +2,14 @@ pragma solidity ^0.4.24;
 
 import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
+import "@aragon/os/contracts/common/SafeERC20.sol";
 import "./Abstraction.sol";
 import "./ERC1155Receiver.sol";
 import "./Helpers.sol";
 
 contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     using SafeMath for uint256;
+    using SafeERC20 for ERC20;
 
     /// ACL
     bytes32 constant public CREATE_MARKET_ROLE = keccak256("CREATE_MARKET_ROLE");
@@ -24,14 +26,15 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     );
     event CreateMarket(
         address creator,
+        address collateralToken,
         uint timestamp,
         bytes32 conditionId,
         bytes32[] outcomes
     );
-    event CloseMarket(bytes32 conditionId, uint[] payouts, uint timestamp);
+    event CloseMarket(bytes32 conditionId, uint[] marginalPricesAtClosure, uint[] payouts, uint timestamp);
 
     struct MarketData {
-        IERC20 collateralToken;
+        ERC20 collateralToken;
         ILMSRMarketMaker marketMaker;
         string question;
         bytes32 questionId;
@@ -68,6 +71,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
       */
     function createMarket(
             address _collateralTokenAddress,
+            uint _collateralAmount,
             string _question,
             bytes32[] _outcomes,
             uint32 _endsAt,
@@ -82,15 +86,12 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             keccak256(abi.encodePacked(_endsAt)),
             _outcomes.length
         );
-        bytes32[] memory _conditionIds = new bytes32[](1);
-        _conditionIds[0] = _conditionId;
-        ILMSRMarketMaker _marketMaker = lmsrMarketMakerFactory.createLMSRMarketMaker(
-            conditionalTokens,
-            IERC20(_collateralTokenAddress),
-            _conditionIds,
-            0,
-            address(0),
-            msg.value
+        ILMSRMarketMaker _marketMaker = ILMSRMarketMaker(
+            setupMarketMaker(
+                _conditionId,
+                _collateralTokenAddress,
+                _collateralAmount
+            )
         );
         conditionalTokens.setApprovalForAll(address(_marketMaker), true);
         bytes32 _realitioQuestionId = realitio.askQuestion(
@@ -102,7 +103,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             0
         );
         marketData[_conditionId] = MarketData({
-            collateralToken: IERC20(_collateralTokenAddress),
+            collateralToken: ERC20(_collateralTokenAddress),
             marketMaker: _marketMaker,
             exists: true,
             outcomesAmount: _outcomes.length,
@@ -113,10 +114,32 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         });
         emit CreateMarket(
             msg.sender,
+            _collateralTokenAddress,
             getTimestamp64(),
             _conditionId,
             _outcomes
         );
+    }
+
+    function setupMarketMaker(
+            bytes32 _conditionId,
+            address _collateralTokenAddress,
+            uint _collateralAmount) private returns(address) {
+        ERC20 _collateralToken = ERC20(_collateralTokenAddress);
+        _collateralToken.approve(lmsrMarketMakerFactory, _collateralAmount);
+        _collateralToken.safeTransferFrom(msg.sender, address(this), _collateralAmount);
+        _collateralToken.safeTransferFrom(msg.sender, address(this), _collateralAmount);
+        bytes32[] memory _conditionIds = new bytes32[](1);
+        _conditionIds[0] = _conditionId;
+        ILMSRMarketMaker _marketMaker = lmsrMarketMakerFactory.createLMSRMarketMaker(
+            conditionalTokens,
+            ERC20(_collateralTokenAddress),
+            _conditionIds,
+            0,
+            address(0),
+            _collateralAmount
+        );
+        return address(_marketMaker);
     }
 
     /**
@@ -130,7 +153,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         require(msg.value >= uint(_collateralLimit), "NOT_ENOUGH_COLLATERAL");
         require(marketData[_conditionId].endsAt >= getTimestamp64(), "EXPIRED_MARKET");
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
-        IERC20 _collateralToken = marketData[_conditionId].collateralToken;
+        ERC20 _collateralToken = marketData[_conditionId].collateralToken;
 
         int[] memory _intOutcomeTokensAmount = uintArrayToIntArray(_outcomeTokensAmount);
         int _netCollateralCost = _marketMaker.trade(_intOutcomeTokensAmount, _collateralLimit);
@@ -154,7 +177,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     /**
       * @notice Sell outcome shares
       */
-    function sell(bytes32 _conditionId, uint[] _outcomeTokensAmount)
+    function sell(bytes32 _conditionId, uint[] _outcomeTokensAmount, uint _minimumCollateralBack)
             external
             payable
             auth(TRADE_ROLE)
@@ -163,29 +186,14 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         require(marketData[_conditionId].endsAt >= getTimestamp64(), "EXPIRED_MARKET");
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
         require(_marketMaker.atomicOutcomeSlotCount() == _outcomeTokensAmount.length, "INCONSISTENT_OUTCOMES_LENGTH");
-        IERC20 _collateralToken = marketData[_conditionId].collateralToken;
-        uint[] memory _positionIds = getAllPositionIds(
-            conditionalTokens,
+        ERC20 _collateralToken = marketData[_conditionId].collateralToken;
+        int[] memory _intOutcomeTokenAmounts = handleSellTokenTransfer(
             _conditionId,
+            _outcomeTokensAmount,
             _marketMaker,
             _collateralToken
         );
-
-        // check if the user has enough ct balance, and if they have, take ownership
-        // of the sold amount and actually sell it. Plus, outcome amounts are passed
-        // in as positive numbers by default, so in order to signal a selling operation
-        // to the market maker, we need to negate the passed amounts.
-        int[] memory _intOutcomeTokenAmounts = new int[](_outcomeTokensAmount.length);
-        for(uint _i; _i < _outcomeTokensAmount.length; _i++) {
-            uint _outcomeTokenAmount = _outcomeTokensAmount[_i];
-            /* require(
-                conditionalTokens.balanceOf(msg.sender, _positionIds[_i]) >= _outcomeTokenAmount,
-                "NOT_ENOUGH_BALANCE"
-            ); */
-            _intOutcomeTokenAmounts[_i] = -int(_outcomeTokenAmount);
-        }
-        conditionalTokens.safeBatchTransferFrom(msg.sender, address(this), _positionIds, _outcomeTokensAmount, "");
-        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokenAmounts, 0);
+        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokenAmounts, -int(_minimumCollateralBack));
         require(_netCollateralCost < 0, "INCONSISTENT_NET_COST");
         _collateralToken.transfer(msg.sender, uint(-_netCollateralCost));
         emit Trade(
@@ -197,18 +205,40 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         );
     }
 
+    function handleSellTokenTransfer(
+            bytes32 _conditionId,
+            uint[] _outcomeTokensAmount,
+            ILMSRMarketMaker _marketMaker,
+            ERC20 _collateralToken) private returns(int[]) {
+        uint[] memory _positionIds = getAllPositionIds(
+            conditionalTokens,
+            _conditionId,
+            _marketMaker,
+            _collateralToken
+        );
+        int[] memory _intOutcomeTokenAmounts = new int[](_outcomeTokensAmount.length);
+        for(uint _i; _i < _outcomeTokensAmount.length; _i++) {
+            uint _outcomeTokenAmount = _outcomeTokensAmount[_i];
+            _intOutcomeTokenAmounts[_i] = -int(_outcomeTokenAmount);
+        }
+        conditionalTokens.safeBatchTransferFrom(msg.sender, address(this), _positionIds, _outcomeTokensAmount, "");
+        return _intOutcomeTokenAmounts;
+    }
+
     /**
       * @notice Close the prediction market
       */
     function closeMarket(bytes32 _conditionId) external auth(CLOSE_MARKET_ROLE) requiresMarketData(_conditionId) {
-        MarketData _marketData = marketData[_conditionId];
+        MarketData storage _marketData = marketData[_conditionId];
         require(_marketData.endsAt <= getTimestamp64(), "ONGOING_MARKET");
         bytes32 _realitioQuestionId = _marketData.realitioQuestionId;
         require(realitio.isFinalized(_realitioQuestionId), "NOT_FINALIZED");
         uint _rightOutcomeIndex = uint(realitio.resultFor(_realitioQuestionId));
         bool _invalidQuestion = _rightOutcomeIndex > _marketData.outcomesAmount;
         uint[] memory _payouts = new uint[](_marketData.outcomesAmount);
+        uint[] memory _marginalPricesAtClosure = new uint[](_marketData.outcomesAmount);
         for (uint _i = 0; _i < _marketData.outcomesAmount; _i++) {
+            _marginalPricesAtClosure[_i] = _marketData.marketMaker.calcMarginalPrice(uint8(_i));
             if(_invalidQuestion) {
                 _payouts[_i] = 1;
             } else {
@@ -217,7 +247,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         }
         _marketData.marketMaker.close();
         conditionalTokens.reportPayouts(_marketData.questionId, _payouts);
-        emit CloseMarket(_conditionId, _payouts, getTimestamp64());
+        emit CloseMarket(_conditionId, _marginalPricesAtClosure, _payouts, getTimestamp64());
     }
 
     /// Modifiers

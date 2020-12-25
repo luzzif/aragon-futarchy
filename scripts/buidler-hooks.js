@@ -80,9 +80,8 @@ module.exports = {
                 [mockedToken1.address, mockedToken2.address],
                 { from: appManager }
             );
-            log(
-                `Added 2 mocked tokens at addresses ${mockedToken1.address} and ${mockedToken2.address}`
-            );
+            const tokenAddresses = await dxTokenRegistryInstance.getTokens(1);
+            log(`Added 2 tokens to list: ${tokenAddresses.toString()}`);
             await mockedToken1.mint(appManager, toWei("100"));
             await mockedToken2.mint(appManager, toWei("100"));
             log("Mocked tokens minted");

@@ -67,13 +67,17 @@ export const Markets = () => {
         (collateralTokenAddress, question, outcomes, funding, endsAt) => {
             api.createMarket(
                 collateralTokenAddress,
+                funding,
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
                 DateTime.fromISO(endsAt).toSeconds(),
                 encodeQuestion(question, outcomes, "Futarchy"),
                 {
                     from: connectedAccount,
-                    value: toWei(funding.toString()),
+                    token: {
+                        address: collateralTokenAddress,
+                        value: funding,
+                    },
                 }
             ).subscribe(() => {}, console.error);
         },

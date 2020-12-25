@@ -7,7 +7,7 @@ contract Helpers {
             IConditionalTokens _conditionalTokens,
             bytes32 _conditionId,
             ILMSRMarketMaker _marketMaker,
-            IERC20 _collateralToken) internal view returns (uint[]) {
+            ERC20 _collateralToken) internal view returns (uint[]) {
         uint[] memory _positionIds = new uint[](_marketMaker.atomicOutcomeSlotCount());
         for(uint _i; _i < _positionIds.length; _i++) {
             _positionIds[_i] = _conditionalTokens.getPositionId(

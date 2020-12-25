@@ -8,6 +8,7 @@ import { OutcomeBar } from "../outcome-bar";
 import { IconClose } from "@aragon/ui";
 import IconWarning from "@aragon/ui/dist/IconWarning";
 import { OUTCOME_BAR_COLORS } from "../../constants";
+import { DateTime } from "luxon";
 
 export const MarketCard = ({
     question,
@@ -15,6 +16,7 @@ export const MarketCard = ({
     endsAt,
     open,
     conditionId,
+    timestamp,
     onClick,
 }) => {
     const theme = useTheme();
@@ -90,7 +92,7 @@ export const MarketCard = ({
             open={open}
             negativeColor={theme.negativeSurface}
             onClick={handleLocalClick}
-            height={252}
+            height={278}
             width="100%"
         >
             <Flex
@@ -100,6 +102,17 @@ export const MarketCard = ({
                 flexDirection="column"
                 padding="16px 20px"
             >
+                <Box
+                    css={`
+                        ${textStyle("label2")}
+                        color: ${theme.contentSecondary};
+                    `}
+                    mb="8px"
+                >
+                    {DateTime.fromSeconds(timestamp).toFormat(
+                        "dd/MM/yyyy HH:mm:ss"
+                    )}
+                </Box>
                 <Box
                     mb="16px"
                     lineHeight="27px"

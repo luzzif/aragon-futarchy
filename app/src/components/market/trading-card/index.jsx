@@ -7,15 +7,20 @@ import { useAragonApi } from "@aragon/api-react";
 import BigNumber from "bignumber.js";
 import { fromWei, toWei } from "web3-utils";
 import lsmrMarketMakerAbi from "../../../abi/lmsr-market-maker.json";
+import conditionalTokensAbi from "../../../abi/conditional-tokens.json";
 import TextInput from "@aragon/ui/dist/TextInput";
 import Radio from "@aragon/ui/dist/Radio";
 import { textStyle } from "@aragon/ui/dist/text-styles";
 import { useTheme } from "@aragon/ui/dist/Theme";
 import { SideSwitcher } from "./side-switcher";
+import { useApproved } from "../../../hooks/allowance";
+import { useTokenSymbol } from "../../../hooks/collateral-tokens";
 
-export const TradingCard = ({ outcomes, conditionId }) => {
-    const { api } = useAragonApi();
+export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
+    const { api, currentApp } = useAragonApi();
     const theme = useTheme();
+    const approved = useApproved();
+    const collateralSymbol = useTokenSymbol(collateralToken);
 
     const [buy, setBuy] = useState(true);
     const [amount, setAmount] = useState("");
@@ -24,6 +29,7 @@ export const TradingCard = ({ outcomes, conditionId }) => {
     const [netCost, setNetCost] = useState(new BigNumber(0));
     const [totalCost, setTotalCost] = useState(new BigNumber(0));
     const [fee, setFee] = useState(new BigNumber(0));
+    const [locallyApproved, setLocallyApproved] = useState(approved);
 
     const handleTrade = useCallback(() => {
         const trade = buy ? api.buy : api.sell;
@@ -35,9 +41,9 @@ export const TradingCard = ({ outcomes, conditionId }) => {
                     return 0;
                 }
                 const tradedAmount = toWei(amount.toString());
-                return buy ? tradedAmount : `-${tradedAmount}`;
+                return tradedAmount;
             }),
-            buy ? toWei(totalCost.toString()) : 0,
+            new BigNumber(weiTotalCost).absoluteValue().toString(),
             { value: buy ? weiTotalCost : 0 }
         ).subscribe(() => {}, console.error);
         setAmount("");
@@ -48,13 +54,39 @@ export const TradingCard = ({ outcomes, conditionId }) => {
         setFee(new BigNumber(0));
     }, [amount, api, buy, conditionId, outcome, outcomes, totalCost]);
 
+    const handleApprovalRequest = useCallback(() => {
+        const handleApproval = async () => {
+            const conditionalTokensInstance = api.external(
+                await api.call("conditionalTokens").toPromise(),
+                conditionalTokensAbi
+            );
+            await conditionalTokensInstance
+                .setApprovalForAll(currentApp.appAddress, true)
+                .toPromise();
+            setLocallyApproved(true);
+        };
+        handleApproval();
+    }, [api, currentApp]);
+
     useEffect(() => {
         setSellable(
             outcome &&
                 amount &&
-                new BigNumber(amount).isLessThanOrEqualTo(outcome.balance)
+                new BigNumber(toWei(amount || "0")).isLessThanOrEqualTo(
+                    outcome.balance
+                )
         );
     }, [outcome, amount]);
+
+    useEffect(() => {
+        if (!outcome && outcomes.length > 0) {
+            setOutcome(outcomes[0]);
+        }
+    }, [outcome, outcomes]);
+
+    useEffect(() => {
+        setLocallyApproved(approved);
+    }, [approved]);
 
     useEffect(() => {
         const getTradeDetails = async () => {
@@ -116,6 +148,23 @@ export const TradingCard = ({ outcomes, conditionId }) => {
         setBuy(!buy);
     }, [buy]);
 
+    const getButtonText = useCallback(() => {
+        if (buy) {
+            return "Confirm";
+        }
+        if (!locallyApproved) {
+            return "Approve tokens";
+        }
+        return !sellable ? "Can't sell" : "Confirm";
+    }, [locallyApproved, buy, sellable]);
+
+    const isButtonDisabled = useCallback(() => {
+        if (!buy && !locallyApproved) {
+            return false;
+        }
+        return !amount || !outcome || (!buy && !sellable);
+    }, [amount, locallyApproved, buy, outcome, sellable]);
+
     return (
         <>
             <AuiBox heading="Trading">
@@ -152,7 +201,11 @@ export const TradingCard = ({ outcomes, conditionId }) => {
                                     <Radio
                                         id={index}
                                         checked={
-                                            outcomes.indexOf(outcome) === index
+                                            outcomes.findIndex(
+                                                (o) =>
+                                                    o.positionId ===
+                                                    outcome.positionId
+                                            ) === index
                                         }
                                         onChange={handleOutcomeChange}
                                         css={`
@@ -187,7 +240,7 @@ export const TradingCard = ({ outcomes, conditionId }) => {
                                 .absoluteValue()
                                 .decimalPlaces(4)
                                 .toString()}
-                            currency="ETH"
+                            currency={collateralSymbol}
                         />
                         <TradeDetail
                             title="Fee"
@@ -195,7 +248,7 @@ export const TradingCard = ({ outcomes, conditionId }) => {
                                 .absoluteValue()
                                 .decimalPlaces(4)
                                 .toString()}
-                            currency="ETH"
+                            currency={collateralSymbol}
                         />
                         <TradeDetail
                             title="Total cost"
@@ -203,18 +256,20 @@ export const TradingCard = ({ outcomes, conditionId }) => {
                                 .absoluteValue()
                                 .decimalPlaces(4)
                                 .toString()}
-                            currency="ETH"
+                            currency={collateralSymbol}
                         />
                     </Flex>
                     <Flex flexDirection="column" width="100%" mb="12px">
                         <Button
                             mode="strong"
-                            disabled={
-                                !amount || !outcome || (!buy && !sellable)
+                            disabled={isButtonDisabled()}
+                            onClick={
+                                locallyApproved || buy
+                                    ? handleTrade
+                                    : handleApprovalRequest
                             }
-                            onClick={handleTrade}
                         >
-                            {!buy && !sellable ? "Can't sell" : "Confirm"}
+                            {getButtonText()}
                         </Button>
                     </Flex>
                 </Flex>

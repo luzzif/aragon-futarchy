@@ -28,6 +28,7 @@ export const Market = ({
     endsAt,
     open,
     onClose,
+    collateralToken,
 }) => {
     const { api } = useAragonApi();
 
@@ -170,6 +171,9 @@ export const Market = ({
                                                 tradeable={tradeable}
                                                 outcomes={outcomes}
                                                 conditionId={conditionId}
+                                                collateralToken={
+                                                    collateralToken
+                                                }
                                             />
                                         ) : (
                                             <BalancesCard outcomes={outcomes} />

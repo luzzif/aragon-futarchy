@@ -27,15 +27,14 @@ const removeTrailingZeroes = (string) => {
 
 const getUpdatedOutcomesInformation = async (
     selectedAccount,
+    collateralTokenAddress,
     conditionId,
     outcomeLabels,
-    payouts
+    payouts,
+    marginalPricesAtClosure
 ) => {
     try {
         const outcomes = [];
-        const collateralTokenAddress = await app
-            .call("collateralToken")
-            .toPromise();
         const conditionalTokensInstance = app.external(
             await app.call("conditionalTokens").toPromise(),
             conditionalTokensAbi
@@ -61,9 +60,9 @@ const getUpdatedOutcomesInformation = async (
                     .balanceOf(selectedAccount, positionId)
                     .toPromise();
             }
-            const price = await marketMakerInstance
-                .calcMarginalPrice(i)
-                .toPromise();
+            const price = marginalPricesAtClosure
+                ? marginalPricesAtClosure[i]
+                : await marketMakerInstance.calcMarginalPrice(i).toPromise();
             outcomes.push({
                 label: outcomeLabels[i],
                 positionId,
@@ -102,6 +101,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
             question: hexToAscii(removeTrailingZeroes(question)),
             outcomes: await getUpdatedOutcomesInformation(
                 selectedAccount,
+                collateralToken,
                 conditionId,
                 outcomeLabels.map(removeTrailingZeroes).map(hexToAscii)
             ),
@@ -120,7 +120,7 @@ const handleCreateMarket = async (event, selectedAccount) => {
 const handleCloseMarket = async (event, markets, selectedAccount) => {
     try {
         const { returnValues } = event;
-        const { conditionId, payouts } = returnValues;
+        const { conditionId, payouts, marginalPricesAtClosure } = returnValues;
         const marketIndex = markets.findIndex(
             (market) => market.conditionId === conditionId
         );
@@ -129,9 +129,11 @@ const handleCloseMarket = async (event, markets, selectedAccount) => {
             markets[marketIndex].payouts = payouts;
             markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
                 selectedAccount,
+                markets[marketIndex].collateralToken,
                 conditionId,
                 markets[marketIndex].outcomes.map((outcome) => outcome.label),
-                payouts
+                payouts,
+                marginalPricesAtClosure
             );
         }
         return [...markets];
@@ -149,6 +151,7 @@ const handleTrade = async (event, markets, selectedAccount) => {
         );
         markets[marketIndex].outcomes = await getUpdatedOutcomesInformation(
             selectedAccount,
+            markets[marketIndex].collateralToken,
             conditionId,
             markets[marketIndex].outcomes.map((outcome) => outcome.label)
         );
