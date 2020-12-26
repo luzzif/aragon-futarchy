@@ -7,7 +7,7 @@ import { Box, Flex } from "reflexbox";
 import { useTheme } from "@aragon/ui/dist/Theme";
 import Info from "@aragon/ui/dist/Info";
 import Link from "@aragon/ui/dist/Link";
-import { useCollateralTokens } from "../../hooks/collateral-tokens";
+import { useCollateralTokens } from "../../hooks/erc20";
 import { useRealitioTimeout } from "../../hooks/realitio";
 import DropDown from "@aragon/ui/dist/DropDown";
 import { TokenIcon } from "../token-icon";

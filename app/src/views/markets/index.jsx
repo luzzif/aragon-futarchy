@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useAragonApi } from "@aragon/api-react";
-import { asciiToHex, toWei } from "web3-utils";
+import { asciiToHex } from "web3-utils";
 import { DateTime } from "luxon";
 import { Button, EmptyStateCard, Header } from "@aragon/ui";
 import { NewMarketSidePanel } from "../../components/new-market-side-panel";

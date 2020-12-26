@@ -13,13 +13,13 @@ import Radio from "@aragon/ui/dist/Radio";
 import { textStyle } from "@aragon/ui/dist/text-styles";
 import { useTheme } from "@aragon/ui/dist/Theme";
 import { SideSwitcher } from "./side-switcher";
-import { useApproved } from "../../../hooks/allowance";
-import { useTokenSymbol } from "../../../hooks/collateral-tokens";
+import { useTokenSymbol } from "../../../hooks/erc20";
+import { useERC1155Approved } from "../../../hooks/erc1155";
 
 export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
-    const { api, currentApp } = useAragonApi();
+    const { api, currentApp, connectedAccount } = useAragonApi();
     const theme = useTheme();
-    const approved = useApproved();
+    const conditionalTokenApproved = useERC1155Approved();
     const collateralSymbol = useTokenSymbol(collateralToken);
 
     const [buy, setBuy] = useState(true);
@@ -29,11 +29,21 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
     const [netCost, setNetCost] = useState(new BigNumber(0));
     const [totalCost, setTotalCost] = useState(new BigNumber(0));
     const [fee, setFee] = useState(new BigNumber(0));
-    const [locallyApproved, setLocallyApproved] = useState(approved);
+    const [
+        locallyConditionalTokenApproved,
+        setLocallyConditionalTokenApproved,
+    ] = useState(conditionalTokenApproved);
 
     const handleTrade = useCallback(() => {
         const trade = buy ? api.buy : api.sell;
         const weiTotalCost = toWei(totalCost.toString());
+        const extraParameters = { from: connectedAccount };
+        if (buy) {
+            extraParameters.token = {
+                address: collateralToken,
+                value: weiTotalCost,
+            };
+        }
         trade(
             conditionId,
             outcomes.map((mappedOutcome) => {
@@ -44,7 +54,7 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
                 return tradedAmount;
             }),
             new BigNumber(weiTotalCost).absoluteValue().toString(),
-            { value: buy ? weiTotalCost : 0 }
+            extraParameters
         ).subscribe(() => {}, console.error);
         setAmount("");
         setOutcome(outcomes[0]);
@@ -52,9 +62,19 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
         setNetCost(new BigNumber(0));
         setTotalCost(new BigNumber(0));
         setFee(new BigNumber(0));
-    }, [amount, api, buy, conditionId, outcome, outcomes, totalCost]);
+    }, [
+        amount,
+        api,
+        buy,
+        collateralToken,
+        conditionId,
+        outcome,
+        outcomes,
+        totalCost,
+        connectedAccount,
+    ]);
 
-    const handleApprovalRequest = useCallback(() => {
+    const handleConditionalTokenApprovalRequest = useCallback(() => {
         const handleApproval = async () => {
             const conditionalTokensInstance = api.external(
                 await api.call("conditionalTokens").toPromise(),
@@ -63,7 +83,7 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
             await conditionalTokensInstance
                 .setApprovalForAll(currentApp.appAddress, true)
                 .toPromise();
-            setLocallyApproved(true);
+            setLocallyConditionalTokenApproved(true);
         };
         handleApproval();
     }, [api, currentApp]);
@@ -85,8 +105,8 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
     }, [outcome, outcomes]);
 
     useEffect(() => {
-        setLocallyApproved(approved);
-    }, [approved]);
+        setLocallyConditionalTokenApproved(conditionalTokenApproved);
+    }, [conditionalTokenApproved]);
 
     useEffect(() => {
         const getTradeDetails = async () => {
@@ -152,18 +172,21 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
         if (buy) {
             return "Confirm";
         }
-        if (!locallyApproved) {
+        if (!locallyConditionalTokenApproved) {
             return "Approve tokens";
         }
         return !sellable ? "Can't sell" : "Confirm";
-    }, [locallyApproved, buy, sellable]);
+    }, [buy, locallyConditionalTokenApproved, sellable]);
 
     const isButtonDisabled = useCallback(() => {
-        if (!buy && !locallyApproved) {
+        if (!buy && !locallyConditionalTokenApproved) {
             return false;
         }
-        return !amount || !outcome || (!buy && !sellable);
-    }, [amount, locallyApproved, buy, outcome, sellable]);
+        if (!amount || new BigNumber(amount).isNegative() || !outcome) {
+            return true;
+        }
+        return buy ? false : !sellable;
+    }, [amount, buy, outcome, sellable, locallyConditionalTokenApproved]);
 
     return (
         <>
@@ -264,9 +287,9 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
                             mode="strong"
                             disabled={isButtonDisabled()}
                             onClick={
-                                locallyApproved || buy
-                                    ? handleTrade
-                                    : handleApprovalRequest
+                                !buy && !locallyConditionalTokenApproved
+                                    ? handleConditionalTokenApprovalRequest
+                                    : handleTrade
                             }
                         >
                             {getButtonText()}

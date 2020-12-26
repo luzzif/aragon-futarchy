@@ -128,7 +128,6 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         ERC20 _collateralToken = ERC20(_collateralTokenAddress);
         _collateralToken.approve(lmsrMarketMakerFactory, _collateralAmount);
         _collateralToken.safeTransferFrom(msg.sender, address(this), _collateralAmount);
-        _collateralToken.safeTransferFrom(msg.sender, address(this), _collateralAmount);
         bytes32[] memory _conditionIds = new bytes32[](1);
         _conditionIds[0] = _conditionId;
         ILMSRMarketMaker _marketMaker = lmsrMarketMakerFactory.createLMSRMarketMaker(
@@ -145,18 +144,19 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
     /**
       * @notice Buy outcome shares.
       */
-    function buy(bytes32 _conditionId, uint[] _outcomeTokensAmount, int _collateralLimit)
+    function buy(bytes32 _conditionId, uint[] _outcomeTokensAmount, uint _collateralLimit)
             external
             payable
             auth(TRADE_ROLE)
             requiresMarketData(_conditionId) {
-        require(msg.value >= uint(_collateralLimit), "NOT_ENOUGH_COLLATERAL");
         require(marketData[_conditionId].endsAt >= getTimestamp64(), "EXPIRED_MARKET");
         ILMSRMarketMaker _marketMaker = marketData[_conditionId].marketMaker;
         ERC20 _collateralToken = marketData[_conditionId].collateralToken;
+        _collateralToken.safeTransferFrom(msg.sender, address(this), _collateralLimit);
+        _collateralToken.approve(address(_marketMaker), _collateralLimit);
 
         int[] memory _intOutcomeTokensAmount = uintArrayToIntArray(_outcomeTokensAmount);
-        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokensAmount, _collateralLimit);
+        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokensAmount, int(_collateralLimit));
         conditionalTokens.safeBatchTransferFrom(
             address(this),
             msg.sender,
@@ -195,7 +195,7 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
         );
         int _netCollateralCost = _marketMaker.trade(_intOutcomeTokenAmounts, -int(_minimumCollateralBack));
         require(_netCollateralCost < 0, "INCONSISTENT_NET_COST");
-        _collateralToken.transfer(msg.sender, uint(-_netCollateralCost));
+        // TODO: send collateral back to user
         emit Trade(
             _conditionId,
             _intOutcomeTokenAmounts,
