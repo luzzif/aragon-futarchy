@@ -20,8 +20,8 @@
         "lint": "yarn lint:code && yarn lint:prettier",
         "app:verify-initialization-parameters": "node ./scripts/initialization-check",
         "apm:versions": "aragon apm versions",
-        "rinkeby:install": "dao install 0xa46482b41D5b4788a6c31232D04c50639901Fb19 futarchy-ctf.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0x3D00D77ee771405628a4bA4913175EcC095538da 604800 0x02321745bE4a141E78db6C39834396f8df00e2a0 --set-permissions open",
-        "rinkeby:upgrade": "dao upgrade 0xa46482b41D5b4788a6c31232D04c50639901Fb19 futarchy-ctf.open.aragonpm.eth --environment rinkeby"
+        "rinkeby:install": "dao install 0x7630904bD300A0D15EF10C85EbDf916bf6dB8941 futarchy-ctf.open.aragonpm.eth --environment rinkeby --app-init-args 0x36bede640D19981A82090519bC1626249984c908 0x03Ce050DAEB28021086Bf8e9B7843d6212c05F7B 0x3D00D77ee771405628a4bA4913175EcC095538da 604800 0x02321745bE4a141E78db6C39834396f8df00e2a0 --set-permissions open",
+        "rinkeby:upgrade": "dao upgrade 0x7630904bD300A0D15EF10C85EbDf916bf6dB8941 futarchy-ctf.open.aragonpm.eth --environment rinkeby"
     },
     "devDependencies": {
         "@aragon/buidler-aragon": "^0.2.9",
