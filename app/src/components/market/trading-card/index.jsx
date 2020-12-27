@@ -109,42 +109,46 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
     }, [conditionalTokenApproved]);
 
     useEffect(() => {
-        const getTradeDetails = async () => {
-            const { marketMaker: marketMakerAddress } = await api
-                .call("marketData", conditionId)
-                .toPromise();
-            const marketMakerInstance = await api.external(
-                marketMakerAddress,
-                lsmrMarketMakerAbi
-            );
-            const weiNetCost = await marketMakerInstance
-                .calcNetCost(
-                    outcomes.map((mappedOutcome) => {
-                        if (mappedOutcome !== outcome) {
-                            return 0;
-                        }
-                        const tradedAmount = toWei(amount.toString());
-                        return buy
-                            ? tradedAmount
-                            : new BigNumber(tradedAmount).negated().toString();
-                    })
-                )
-                .toPromise();
-            const netCost = new BigNumber(fromWei(weiNetCost));
-            setNetCost(netCost);
-            const fee = new BigNumber(
-                fromWei(
-                    await marketMakerInstance
-                        .calcMarketFee(
-                            new BigNumber(weiNetCost).absoluteValue().toString()
-                        )
-                        .toPromise()
-                )
-            );
-            setFee(fee);
-            setTotalCost(netCost.plus(fee));
-        };
         if (outcome && amount) {
+            const getTradeDetails = async () => {
+                const { marketMaker: marketMakerAddress } = await api
+                    .call("marketData", conditionId)
+                    .toPromise();
+                const marketMakerInstance = await api.external(
+                    marketMakerAddress,
+                    lsmrMarketMakerAbi
+                );
+                const weiNetCost = await marketMakerInstance
+                    .calcNetCost(
+                        outcomes.map((mappedOutcome) => {
+                            if (mappedOutcome !== outcome) {
+                                return 0;
+                            }
+                            const tradedAmount = toWei(amount.toString());
+                            return buy
+                                ? tradedAmount
+                                : new BigNumber(tradedAmount)
+                                      .negated()
+                                      .toString();
+                        })
+                    )
+                    .toPromise();
+                const netCost = new BigNumber(fromWei(weiNetCost));
+                setNetCost(netCost);
+                const fee = new BigNumber(
+                    fromWei(
+                        await marketMakerInstance
+                            .calcMarketFee(
+                                new BigNumber(weiNetCost)
+                                    .absoluteValue()
+                                    .toString()
+                            )
+                            .toPromise()
+                    )
+                );
+                setFee(fee);
+                setTotalCost(netCost.plus(fee));
+            };
             getTradeDetails();
         } else {
             setNetCost(new BigNumber(0));
