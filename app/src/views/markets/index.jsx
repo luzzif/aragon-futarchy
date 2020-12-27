@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useAragonApi } from "@aragon/api-react";
-import { asciiToHex } from "web3-utils";
+import { asciiToHex, toWei } from "web3-utils";
 import { DateTime } from "luxon";
 import { Button, EmptyStateCard, Header } from "@aragon/ui";
 import { NewMarketSidePanel } from "../../components/new-market-side-panel";
@@ -65,9 +65,10 @@ export const Markets = () => {
 
     const handleMarketCreate = useCallback(
         (collateralTokenAddress, question, outcomes, funding, endsAt) => {
+            const weiFunding = toWei(funding);
             api.createMarket(
                 collateralTokenAddress,
-                funding,
+                weiFunding,
                 asciiToHex(question),
                 outcomes.map(asciiToHex),
                 DateTime.fromISO(endsAt).toSeconds(),
@@ -76,7 +77,7 @@ export const Markets = () => {
                     from: connectedAccount,
                     token: {
                         address: collateralTokenAddress,
-                        value: funding,
+                        value: weiFunding,
                     },
                 }
             ).subscribe(() => {}, console.error);
