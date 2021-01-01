@@ -16,6 +16,7 @@ import { TradingCard } from "./trading-card";
 import { abi as realitioAbi } from "@realitio/realitio-contracts/truffle/build/contracts/Realitio.json";
 import Link from "@aragon/ui/dist/Link";
 import { BalancesCard } from "./balances-card";
+import { MAX_SIGNED_32_BITS_INTEGER } from "../../constants";
 
 export const Market = ({
     onBack,
@@ -42,15 +43,20 @@ export const Market = ({
         const expired = endsAt < parseInt(now / 1000);
         setExpired(expired);
         if (!expired) {
-            // if the market is not expired we set up a timeout to update
-            // the component's state once it actually expires.
-            const timer = setTimeout(
-                () => setExpired(true),
-                endsAt * 1000 - now
-            );
-            return () => {
-                clearTimeout(timer);
-            };
+            const marketExpirationTimeout = endsAt * 1000 - now;
+            // setTimeout stores delay value in 32 bit numbers, so
+            // we avoid overflow and inconsistent behavior with this check
+            if (marketExpirationTimeout < MAX_SIGNED_32_BITS_INTEGER) {
+                // if the market is not expired we set up a timeout to update
+                // the component's state once it actually expires.
+                const timer = setTimeout(
+                    () => setExpired(true),
+                    marketExpirationTimeout
+                );
+                return () => {
+                    clearTimeout(timer);
+                };
+            }
         }
     }, [endsAt]);
 

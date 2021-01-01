@@ -24,3 +24,5 @@ export const TOKEN_LIST_ID = {
     4: 1,
     1337: 1,
 };
+
+export const MAX_SIGNED_32_BITS_INTEGER = 2147483647;

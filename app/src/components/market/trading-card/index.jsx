@@ -193,114 +193,107 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
     }, [amount, buy, outcome, sellable, locallyConditionalTokenApproved]);
 
     return (
-        <>
-            <AuiBox heading="Trading">
-                <Flex flexDirection="column" alignItems="center">
-                    <Flex width="100%" mb="12px">
-                        <SideSwitcher buy={buy} onChange={handleSideChange} />
-                    </Flex>
-                    <Flex mb="8px" justifyContent="space-between" width="100%">
-                        <Box
-                            css={`
-                                ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
-                        >
-                            Outcome
-                        </Box>
-                        <Box
-                            css={`
-                                ${textStyle("label2")}
-                                color: ${theme.contentSecondary};
-                            `}
-                        >
-                            Balance
-                        </Box>
-                    </Flex>
-                    <Flex mb="4px" flexDirection="column" width="100%">
-                        {outcomes.map((mappedOutcome, index) => (
-                            <Flex
-                                key={index}
-                                justifyContent="space-between"
-                                mb="8px"
-                            >
-                                <Box display="flex" alignItems="center">
-                                    <Radio
-                                        id={index}
-                                        checked={
-                                            outcomes.findIndex(
-                                                (o) =>
-                                                    o.positionId ===
-                                                    outcome.positionId
-                                            ) === index
-                                        }
-                                        onChange={handleOutcomeChange}
-                                        css={`
-                                            margin-right: 8px;
-                                        `}
-                                    />
-                                    {mappedOutcome.label}
-                                </Box>
-                                <Box>
-                                    {new BigNumber(
-                                        fromWei(mappedOutcome.balance)
-                                    )
-                                        .decimalPlaces(4)
-                                        .toString()}
-                                </Box>
-                            </Flex>
-                        ))}
-                    </Flex>
-                    <Box mb="16px" width="100%">
-                        <TextInput
-                            wide
-                            type="number"
-                            value={amount}
-                            onChange={handleAmountChange}
-                            placeholder="Shares amount"
-                        />
-                    </Box>
-                    <Flex flexDirection="column" width="100%" mb="12px">
-                        <TradeDetail
-                            title={`Net ${buy ? "cost" : "gain"}`}
-                            value={netCost
-                                .absoluteValue()
-                                .decimalPlaces(4)
-                                .toString()}
-                            currency={collateralSymbol}
-                        />
-                        <TradeDetail
-                            title="Fee"
-                            value={fee
-                                .absoluteValue()
-                                .decimalPlaces(4)
-                                .toString()}
-                            currency={collateralSymbol}
-                        />
-                        <TradeDetail
-                            title="Total cost"
-                            value={totalCost
-                                .absoluteValue()
-                                .decimalPlaces(4)
-                                .toString()}
-                            currency={collateralSymbol}
-                        />
-                    </Flex>
-                    <Flex flexDirection="column" width="100%" mb="12px">
-                        <Button
-                            mode="strong"
-                            disabled={isButtonDisabled()}
-                            onClick={
-                                !buy && !locallyConditionalTokenApproved
-                                    ? handleConditionalTokenApprovalRequest
-                                    : handleTrade
-                            }
-                        >
-                            {getButtonText()}
-                        </Button>
-                    </Flex>
+        <AuiBox heading="Trading">
+            <Flex flexDirection="column" alignItems="center">
+                <Flex width="100%" mb="12px">
+                    <SideSwitcher buy={buy} onChange={handleSideChange} />
                 </Flex>
-            </AuiBox>
-        </>
+                <Flex mb="8px" justifyContent="space-between" width="100%">
+                    <Box
+                        css={`
+                            ${textStyle("label2")}
+                            color: ${theme.contentSecondary};
+                        `}
+                    >
+                        Outcome
+                    </Box>
+                    <Box
+                        css={`
+                            ${textStyle("label2")}
+                            color: ${theme.contentSecondary};
+                        `}
+                    >
+                        Balance
+                    </Box>
+                </Flex>
+                <Flex mb="4px" flexDirection="column" width="100%">
+                    {outcomes.map((mappedOutcome, index) => (
+                        <Flex
+                            key={index}
+                            justifyContent="space-between"
+                            mb="8px"
+                        >
+                            <Box display="flex" alignItems="center">
+                                <Radio
+                                    id={index}
+                                    checked={
+                                        outcomes.findIndex(
+                                            (o) =>
+                                                o.positionId ===
+                                                outcome.positionId
+                                        ) === index
+                                    }
+                                    onChange={handleOutcomeChange}
+                                    css={`
+                                        margin-right: 8px;
+                                    `}
+                                />
+                                {mappedOutcome.label}
+                            </Box>
+                            <Box>
+                                {new BigNumber(fromWei(mappedOutcome.balance))
+                                    .decimalPlaces(4)
+                                    .toString()}
+                            </Box>
+                        </Flex>
+                    ))}
+                </Flex>
+                <Box mb="16px" width="100%">
+                    <TextInput
+                        wide
+                        type="number"
+                        value={amount}
+                        onChange={handleAmountChange}
+                        placeholder="Shares amount"
+                    />
+                </Box>
+                <Flex flexDirection="column" width="100%" mb="12px">
+                    <TradeDetail
+                        title={`Net ${buy ? "cost" : "gain"}`}
+                        value={netCost
+                            .absoluteValue()
+                            .decimalPlaces(4)
+                            .toString()}
+                        currency={collateralSymbol}
+                    />
+                    <TradeDetail
+                        title="Fee"
+                        value={fee.absoluteValue().decimalPlaces(4).toString()}
+                        currency={collateralSymbol}
+                    />
+                    <TradeDetail
+                        title="Total cost"
+                        value={totalCost
+                            .absoluteValue()
+                            .decimalPlaces(4)
+                            .toString()}
+                        currency={collateralSymbol}
+                    />
+                </Flex>
+                <Flex flexDirection="column" width="100%" mb="12px">
+                    <Button
+                        mode="strong"
+                        disabled={isButtonDisabled()}
+                        onClick={
+                            !buy && !locallyConditionalTokenApproved
+                                ? handleConditionalTokenApprovalRequest
+                                : handleTrade
+                        }
+                    >
+                        {getButtonText()}
+                    </Button>
+                </Flex>
+            </Flex>
+        </AuiBox>
     );
 };

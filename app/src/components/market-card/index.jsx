@@ -7,7 +7,10 @@ import Card from "@aragon/ui/dist/Card";
 import { OutcomeBar } from "../outcome-bar";
 import { IconClose } from "@aragon/ui";
 import IconWarning from "@aragon/ui/dist/IconWarning";
-import { OUTCOME_BAR_COLORS } from "../../constants";
+import {
+    OUTCOME_BAR_COLORS,
+    MAX_SIGNED_32_BITS_INTEGER,
+} from "../../constants";
 import { DateTime } from "luxon";
 
 export const MarketCard = ({
@@ -27,15 +30,19 @@ export const MarketCard = ({
         const expired = endsAt < parseInt(now / 1000);
         setExpired(expired);
         if (!expired) {
-            // if the market is not expired we set up a timeout to update
-            // the component's state once it actually expires.
-            const timer = setTimeout(
-                () => setExpired(true),
-                endsAt * 1000 - now
-            );
-            return () => {
-                clearTimeout(timer);
-            };
+            const marketExpirationTimeout = endsAt * 1000 - now;
+            // setTimeout stores delay value in 32 bit numbers, so
+            // we avoid overflow and inconsistent behavior with this check
+            if (marketExpirationTimeout < MAX_SIGNED_32_BITS_INTEGER) {
+                // if the market is not expired we set up a timeout to update
+                // the component's state once it actually expires.
+                const timer = setTimeout(() => {
+                    setExpired(true);
+                }, marketExpirationTimeout);
+                return () => {
+                    clearTimeout(timer);
+                };
+            }
         }
     }, [endsAt]);
 
