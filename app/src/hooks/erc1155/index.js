@@ -18,7 +18,12 @@ export const useERC1155Approved = () => {
     }, [api, currentApp]);
 
     useEffect(() => {
-        if (!currentApp || !currentApp.appAddress || !erc1155Address) {
+        if (
+            !currentApp ||
+            !currentApp.appAddress ||
+            !connectedAccount ||
+            !erc1155Address
+        ) {
             return;
         }
         const erc1155Instance = api.external(erc1155Address, erc1155Abi);
