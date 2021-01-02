@@ -101,6 +101,7 @@ export const Market = ({
                     outcomes.map((_, index) => 1 << index)
                 )
                 .toPromise();
+            setRedeemable(false);
         } catch (error) {
             console.error("could not redeem positions", error);
         }
