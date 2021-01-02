@@ -10,7 +10,7 @@ const {
     getPositionId,
     getTradeCostWithFees,
 } = require("./helpers/markets");
-const { getWeth9Balance } = require("./helpers/balances.js");
+const BN = require("bn.js");
 
 const FutarchyApp = artifacts.require("FutarchyApp.sol");
 
@@ -20,7 +20,7 @@ contract("FutarchyApp", ([appManager, user]) => {
     let appBase,
         app,
         conditionalTokensInstance,
-        collateralTokenAddress,
+        collateralTokenInstance,
         realitioInstance,
         realitioArbitratorProxyInstance;
 
@@ -63,7 +63,9 @@ contract("FutarchyApp", ([appManager, user]) => {
         const LMSRMarketMakerFactory = artifacts.require(
             "LMSRMarketMakerFactory.sol"
         );
-        const WETH9 = artifacts.require("WETH9.sol");
+        const ERC20PresetMinterPauser = await artifacts.require(
+            "ERC20PresetMinterPauser.sol"
+        );
         const Realitio = artifacts.require("Realitio.sol");
         const CentralizedArbitrator = artifacts.require(
             "CentralizedArbitrator.sol"
@@ -78,8 +80,10 @@ contract("FutarchyApp", ([appManager, user]) => {
         conditionalTokensInstance = await ConditionalTokens.new({
             from: appManager,
         });
-        const weth9Instance = await WETH9.new({ from: appManager });
-        collateralTokenAddress = weth9Instance.address;
+        collateralTokenInstance = await ERC20PresetMinterPauser.new(
+            "Mocked 1",
+            "MCK1"
+        );
         realitioInstance = await Realitio.new({ from: appManager });
         const arbitratorInstance = await CentralizedArbitrator.new(
             arbitrationPrice,
@@ -100,8 +104,8 @@ contract("FutarchyApp", ([appManager, user]) => {
         await app.initialize(
             conditionalTokensInstance.address,
             lsmrMarketMakerFactoryInstance.address,
-            weth9Instance.address,
             realitioInstance.address,
+            3, // 3 seconds realitio timeout
             realitioArbitratorProxyInstance.address
         );
     });
@@ -110,11 +114,11 @@ contract("FutarchyApp", ([appManager, user]) => {
         await newMarket(
             app,
             user,
+            collateralTokenInstance,
+            "1",
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000) + 1000,
-            "1",
-            1
+            parseInt(Date.now() / 1000) + 1000
         );
     });
 
@@ -122,11 +126,11 @@ contract("FutarchyApp", ([appManager, user]) => {
         const { conditionId, marketMakerInstance } = await newMarket(
             app,
             user,
+            collateralTokenInstance,
+            "1",
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000) + 1000,
-            "1",
-            1
+            parseInt(Date.now() / 1000) + 1000
         );
         const wantedShares = toWei("0.123");
         const outcomeTokensAmount = [wantedShares, "0"];
@@ -134,13 +138,19 @@ contract("FutarchyApp", ([appManager, user]) => {
             marketMakerInstance,
             outcomeTokensAmount
         );
+        await collateralTokenInstance.mint(user, totalCost.toString());
+        await collateralTokenInstance.approve(
+            app.address,
+            totalCost.toString(),
+            { from: user }
+        );
         await app.buy(conditionId, outcomeTokensAmount, totalCost, {
             from: user,
             value: totalCost,
         });
         const positionId = await getPositionId(
             conditionalTokensInstance,
-            collateralTokenAddress,
+            collateralTokenInstance.address,
             conditionId
         );
         const rawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
@@ -154,11 +164,11 @@ contract("FutarchyApp", ([appManager, user]) => {
         const { conditionId, marketMakerInstance } = await newMarket(
             app,
             user,
+            collateralTokenInstance,
+            "1",
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000) + 1000,
-            "1",
-            1
+            parseInt(Date.now() / 1000) + 1000
         );
         const wantedShares = toWei("1");
         const outcomeTokensAmount = [wantedShares, "0"];
@@ -167,13 +177,19 @@ contract("FutarchyApp", ([appManager, user]) => {
             outcomeTokensAmount
         );
         // buying the tokens that will be sold later
+        await collateralTokenInstance.mint(user, totalCost.toString());
+        await collateralTokenInstance.approve(
+            app.address,
+            totalCost.toString(),
+            { from: user }
+        );
         await app.buy(conditionId, outcomeTokensAmount, totalCost.toString(), {
             from: user,
             value: totalCost.toString(),
         });
         const positionId = await getPositionId(
             conditionalTokensInstance,
-            collateralTokenAddress,
+            collateralTokenInstance.address,
             conditionId
         );
         const preSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
@@ -184,17 +200,27 @@ contract("FutarchyApp", ([appManager, user]) => {
         await conditionalTokensInstance.setApprovalForAll(app.address, true, {
             from: user,
         });
-        const sellReceipt = await app.sell(conditionId, outcomeTokensAmount, {
-            from: user,
-        });
+        const totalCollateralBack = await getTradeCostWithFees(
+            marketMakerInstance,
+            outcomeTokensAmount.map((amount) =>
+                amount === "0" ? "0" : `-${amount}`
+            )
+        );
+        const sellReceipt = await app.sell(
+            conditionId,
+            outcomeTokensAmount,
+            totalCollateralBack.abs().toString(),
+            { from: user }
+        );
         const postSellRawOutcomeTokenAmount = await conditionalTokensInstance.balanceOf(
             user,
             positionId
         );
         assert.equal(postSellRawOutcomeTokenAmount.toString(), "0");
-        const weth9Balance = await getWeth9Balance(app, user);
+        const collateralBalance = await collateralTokenInstance.balanceOf(user);
+        assert.isTrue(collateralBalance.gt(new BN(0)));
         assert.equal(
-            weth9Balance.toString(),
+            collateralBalance.toString(),
             getEventArgument(sellReceipt, "Trade", "netCollateralCost")
                 .abs()
                 .toString()
@@ -205,11 +231,11 @@ contract("FutarchyApp", ([appManager, user]) => {
         const { conditionId, marketMakerInstance } = await newMarket(
             app,
             user,
+            collateralTokenInstance,
+            "1",
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000) + 1000,
-            "1",
-            1
+            parseInt(Date.now() / 1000) + 1000
         );
         const wantedShares = toWei("1");
         const outcomeTokensAmount = [wantedShares, "0"];
@@ -218,13 +244,19 @@ contract("FutarchyApp", ([appManager, user]) => {
             outcomeTokensAmount
         );
         // buying the tokens that will be sold later
+        await collateralTokenInstance.mint(user, totalCost.toString());
+        await collateralTokenInstance.approve(
+            app.address,
+            totalCost.toString(),
+            { from: user }
+        );
         await app.buy(conditionId, outcomeTokensAmount, totalCost.toString(), {
             from: user,
             value: totalCost.toString(),
         });
         const positionId = await getPositionId(
             conditionalTokensInstance,
-            collateralTokenAddress,
+            collateralTokenInstance.address,
             conditionId
         );
         assert.equal(
@@ -241,11 +273,11 @@ contract("FutarchyApp", ([appManager, user]) => {
         let { conditionId, realitioQuestionId } = await newMarket(
             app,
             user,
+            collateralTokenInstance,
+            "1",
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
-            "1",
-            2
+            parseInt(Date.now() / 1000)
         );
         await realitioInstance.submitAnswer(realitioQuestionId, "0x0", 0, {
             value: toWei("1"),
@@ -264,15 +296,50 @@ contract("FutarchyApp", ([appManager, user]) => {
         expect(args.payouts[1].toString()).to.be.equal("0");
     });
 
+    it("should let a user redeem positions on a market", async function () {
+        const outcomes = ["test-outcome-1", "test-outcome-2"];
+        let { conditionId, realitioQuestionId } = await newMarket(
+            app,
+            user,
+            collateralTokenInstance,
+            "1",
+            "test-question",
+            outcomes,
+            parseInt(Date.now() / 1000)
+        );
+        await realitioInstance.submitAnswer(realitioQuestionId, "0x0", 0, {
+            value: toWei("1"),
+        });
+        await new Promise((resolve) => {
+            setTimeout(resolve, 3000);
+        });
+        let receipt = await app.closeMarket(conditionId, { from: user });
+        const closeMarketEvent = receipt.logs.find(
+            (log) => log.event === "CloseMarket"
+        );
+        const { args } = closeMarketEvent;
+        expect(args.conditionId).to.be.equal(conditionId);
+        expect(args.payouts).to.have.length(2);
+        expect(args.payouts[0].toString()).to.be.equal("1");
+        expect(args.payouts[1].toString()).to.be.equal("0");
+        receipt = await conditionalTokensInstance.redeemPositions(
+            collateralTokenInstance.address,
+            asciiToHex(""),
+            conditionId,
+            outcomes.map((_, index) => 1 << index),
+            { from: user }
+        );
+    });
+
     it("should handle a reality.eth answer that marks the question as invalid", async function () {
         let { conditionId, realitioQuestionId } = await newMarket(
             app,
             user,
+            collateralTokenInstance,
+            "1",
             "test-question",
             ["test-outcome-1", "test-outcome-2"],
-            parseInt(Date.now() / 1000),
-            "1",
-            2
+            parseInt(Date.now() / 1000)
         );
         // marking the question as invalid
         await realitioInstance.submitAnswer(

@@ -9,20 +9,26 @@ const Realitio = artifacts.require("Realitio.sol");
 const newMarket = async (
     app,
     user,
+    collateralTokenInstance,
+    collateralAmount,
     question,
     outcomes,
-    endsAt,
-    etherCollateral,
-    realitioTimeout
+    endsAt
 ) => {
     const realitioQuestion = encodeQuestion(question, outcomes, "futarchy");
+    const weiCollateralAmount = await toWei(collateralAmount);
+    await collateralTokenInstance.mint(user, weiCollateralAmount);
+    await collateralTokenInstance.approve(app.address, weiCollateralAmount, {
+        from: user,
+    });
     const receipt = await app.createMarket(
+        collateralTokenInstance.address,
+        weiCollateralAmount,
         fromAscii(question),
         outcomes.map(fromAscii),
         endsAt,
         realitioQuestion,
-        realitioTimeout,
-        { from: user, value: toWei(etherCollateral) }
+        { from: user }
     );
     const createMarketEvent = receipt.logs.find(
         (log) => log.event === "CreateMarket"
@@ -69,7 +75,9 @@ const getTradeCostWithFees = async (
     outcomeTokenAmounts
 ) => {
     const netCost = await marketMakerInstance.calcNetCost(outcomeTokenAmounts);
-    const fee = await marketMakerInstance.calcMarketFee(netCost.toString());
+    const fee = await marketMakerInstance.calcMarketFee(
+        netCost.abs().toString()
+    );
     return netCost.add(fee);
 };
 
