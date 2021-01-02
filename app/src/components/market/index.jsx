@@ -97,7 +97,7 @@ export const Market = ({
                 .redeemPositions(
                     collateralToken,
                     asciiToHex(""),
-                    asciiToHex(conditionId),
+                    conditionId,
                     outcomes.map((_, index) => 1 << index)
                 )
                 .toPromise();
