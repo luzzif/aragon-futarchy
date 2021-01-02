@@ -9,7 +9,7 @@
         "postinstall": "yarn compile && yarn build-app",
         "build-app": "cd app && npm install && cd ..",
         "compile": "buidler compile --force && buidler compile --config buidler.config.5.js && buidler compile --config buidler.config.6.js",
-        "test": "yarn test --network buidlerevm",
+        "test": "buidler test --network buidlerevm",
         "start": "yarn compile && buidler start",
         "publish:major": "buidler publish major",
         "publish:minor": "buidler publish minor",
