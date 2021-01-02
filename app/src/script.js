@@ -160,6 +160,20 @@ const handleTrade = async (event, markets, selectedAccount) => {
     }
 };
 
+const updateOutcomesOnAccountConnection = async (markets, selectedAccount) => {
+    if (!markets || markets.length === 0) {
+        return;
+    }
+    for (const market of markets) {
+        market.outcomes = await getUpdatedOutcomesInformation(
+            selectedAccount,
+            market.collateralToken,
+            market.conditionId,
+            market.outcomes.map((outcome) => outcome.label)
+        );
+    }
+};
+
 app.store(async (state, action) => {
     const { event } = action;
     switch (event) {
@@ -170,10 +184,12 @@ app.store(async (state, action) => {
             return { ...state, syncing: false };
         }
         case events.ACCOUNTS_TRIGGER: {
-            return {
-                ...state,
-                selectedAccount: action.returnValues.account,
-            };
+            const selectedAccount = action.returnValues.account;
+            await updateOutcomesOnAccountConnection(
+                state.markets,
+                selectedAccount
+            );
+            return { ...state, selectedAccount };
         }
         case "CreateMarket": {
             return {
