@@ -88,17 +88,14 @@ export const Market = ({
     }, [endsAt, open, outcomes]);
 
     const handleRedeemPositions = useCallback(async () => {
-        const conditionalTokensInstance = api.external(
-            await api.call("conditionalTokens").toPromise(),
-            conditionalTokensAbi
-        );
-        const collateralTokenAddress = await api
-            .call("collateralToken")
-            .toPromise();
         try {
+            const conditionalTokensInstance = api.external(
+                await api.call("conditionalTokens").toPromise(),
+                conditionalTokensAbi
+            );
             await conditionalTokensInstance
                 .redeemPositions(
-                    collateralTokenAddress,
+                    collateralToken,
                     asciiToHex(""),
                     asciiToHex(conditionId),
                     outcomes.map((_, index) => 1 << index)
@@ -107,7 +104,7 @@ export const Market = ({
         } catch (error) {
             console.error("could not redeem positions", error);
         }
-    }, [api, conditionId, outcomes]);
+    }, [api, conditionId, outcomes, collateralToken]);
 
     const getActionContent = () => {
         if (finalized === false && expired) {
