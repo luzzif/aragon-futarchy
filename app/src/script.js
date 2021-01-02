@@ -47,15 +47,14 @@ const getUpdatedOutcomesInformation = async (
             lmsrMarketMakerAbi
         );
         for (let i = 0; i < outcomeLabels.length; i++) {
+            const collectionId = await conditionalTokensInstance
+                .getCollectionId(asciiToHex(""), conditionId, i + 1)
+                .toPromise();
+            const positionId = await conditionalTokensInstance
+                .getPositionId(collateralTokenAddress, collectionId)
+                .toPromise();
             let balance = "0";
-            let positionId = "";
             if (selectedAccount) {
-                const collectionId = await conditionalTokensInstance
-                    .getCollectionId(asciiToHex(""), conditionId, i + 1)
-                    .toPromise();
-                positionId = await conditionalTokensInstance
-                    .getPositionId(collateralTokenAddress, collectionId)
-                    .toPromise();
                 balance = await conditionalTokensInstance
                     .balanceOf(selectedAccount, positionId)
                     .toPromise();
