@@ -158,8 +158,8 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
     }, [amount, api, buy, conditionId, outcome, outcomes]);
 
     const handleOutcomeChange = useCallback(
-        (radioId) => {
-            setOutcome(outcomes[parseInt(radioId)]);
+        (positionId) => {
+            setOutcome(outcomes.find((o) => o.positionId === positionId));
         },
         [outcomes]
     );
@@ -217,36 +217,35 @@ export const TradingCard = ({ outcomes, conditionId, collateralToken }) => {
                     </Box>
                 </Flex>
                 <Flex mb="4px" flexDirection="column" width="100%">
-                    {outcomes.map((mappedOutcome, index) => (
-                        <Flex
-                            key={index}
-                            justifyContent="space-between"
-                            mb="8px"
-                        >
-                            <Box display="flex" alignItems="center">
-                                <Radio
-                                    id={index}
-                                    checked={
-                                        outcomes.findIndex(
-                                            (o) =>
-                                                o.positionId ===
-                                                outcome.positionId
-                                        ) === index
-                                    }
-                                    onChange={handleOutcomeChange}
-                                    css={`
-                                        margin-right: 8px;
-                                    `}
-                                />
-                                {mappedOutcome.label}
-                            </Box>
-                            <Box>
-                                {new BigNumber(fromWei(mappedOutcome.balance))
-                                    .decimalPlaces(4)
-                                    .toString()}
-                            </Box>
-                        </Flex>
-                    ))}
+                    {outcomes.map((mappedOutcome) => {
+                        const { positionId } = mappedOutcome;
+                        return (
+                            <Flex
+                                key={positionId}
+                                justifyContent="space-between"
+                                mb="8px"
+                            >
+                                <Box display="flex" alignItems="center">
+                                    <Radio
+                                        id={positionId}
+                                        checked={mappedOutcome === outcome}
+                                        onChange={handleOutcomeChange}
+                                        css={`
+                                            margin-right: 8px;
+                                        `}
+                                    />
+                                    {mappedOutcome.label}
+                                </Box>
+                                <Box>
+                                    {new BigNumber(
+                                        fromWei(mappedOutcome.balance)
+                                    )
+                                        .decimalPlaces(4)
+                                        .toString()}
+                                </Box>
+                            </Flex>
+                        );
+                    })}
                 </Flex>
                 <Box mb="16px" width="100%">
                     <TextInput
