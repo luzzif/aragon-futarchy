@@ -193,15 +193,15 @@ contract FutarchyApp is AragonApp, ERC1155Receiver, Helpers {
             _marketMaker,
             _collateralToken
         );
-        int _netCollateralCost = _marketMaker.trade(_intOutcomeTokenAmounts, -int(_minimumCollateralBack));
-        require(_netCollateralCost < 0, "INCONSISTENT_NET_COST");
-        // TODO: send collateral back to user
+        int _netCollateralBack = _marketMaker.trade(_intOutcomeTokenAmounts, -int(_minimumCollateralBack));
+        require(_netCollateralBack < 0, "INCONSISTENT_COLLATERAL_BACK");
+        _collateralToken.safeTransfer(msg.sender, uint(-_netCollateralBack));
         emit Trade(
             _conditionId,
             _intOutcomeTokenAmounts,
             msg.sender,
             getTimestamp64(),
-            _netCollateralCost
+            _netCollateralBack
         );
     }
 
